@@ -16,6 +16,7 @@ def _make_tracker(buffer_len=5):
     tracker.trajectory = deque(maxlen=buffer_len)
     tracker.frame_idx = 0
     tracker.active_ball_track_id = None
+    tracker.current_frame_ball_pos = None
     return tracker
 
 
@@ -29,6 +30,7 @@ def test_first_ball_seen_sets_active_track_and_appends_point():
     assert len(tracker.trajectory) == 1
     assert tracker.trajectory[0].x == 15
     assert tracker.trajectory[0].y == 15
+    assert tracker.current_frame_ball_pos == (15, 15)
 
 
 def test_sticks_to_active_track_id_over_higher_confidence_new_ball():
@@ -53,6 +55,17 @@ def test_occlusion_frame_leaves_trajectory_and_active_id_untouched():
 
     assert tracker.active_ball_track_id == 1
     assert len(tracker.trajectory) == 1  # unchanged
+    # No ball this frame -> distinguishable from the stale trajectory point.
+    assert tracker.current_frame_ball_pos is None
+
+
+def test_current_frame_ball_pos_resets_between_calls():
+    tracker = _make_tracker()
+    tracker._update_trajectory([Detection(BALL, 0.8, (0, 0, 10, 10), track_id=1)])
+    assert tracker.current_frame_ball_pos == (5, 5)
+
+    tracker._update_trajectory([Detection(HOOP, 0.9, (0, 0, 50, 50), track_id=None)])
+    assert tracker.current_frame_ball_pos is None
 
 
 def test_reacquires_new_track_id_after_active_one_disappears():

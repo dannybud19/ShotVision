@@ -28,6 +28,11 @@ class BallTracker:
         self.trajectory: deque[TrajectoryPoint] = deque(maxlen=buffer_len)
         self.frame_idx = 0
         self.active_ball_track_id: int | None = None
+        # The ball position for the frame just processed by update(), or
+        # None if no ball was detected that frame — distinct from
+        # trajectory[-1], which stays stale during an occlusion gap. This is
+        # what the shot state machine should feed per frame.
+        self.current_frame_ball_pos: tuple[float, float] | None = None
 
     def update(self, frame) -> list[Detection]:
         """Runs tracking on one frame, returns all canonical detections
@@ -47,6 +52,7 @@ class BallTracker:
         return detections
 
     def _update_trajectory(self, detections: list[Detection]) -> None:
+        self.current_frame_ball_pos = None
         ball_detections = [d for d in detections if d.class_name == BALL]
         if not ball_detections:
             return  # occlusion frame: leave trajectory/active id untouched
@@ -65,8 +71,10 @@ class BallTracker:
 
         x, y = chosen.center
         self.trajectory.append(TrajectoryPoint(self.frame_idx, x, y, chosen.conf))
+        self.current_frame_ball_pos = (x, y)
 
     def reset(self) -> None:
         self.trajectory.clear()
         self.active_ball_track_id = None
         self.frame_idx = 0
+        self.current_frame_ball_pos = None
