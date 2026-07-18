@@ -2,7 +2,12 @@ import pytest
 
 from shotvision.config.settings import ShotLogicConfig
 from shotvision.shot_logic.rim import RimRegion
-from shotvision.shot_logic.state_machine import ShotOutcome, ShotState, ShotStateMachine
+from shotvision.shot_logic.state_machine import (
+    ResolutionReason,
+    ShotOutcome,
+    ShotState,
+    ShotStateMachine,
+)
 
 
 def _rim():
@@ -165,3 +170,61 @@ def test_resets_to_idle_ready_for_next_shot_after_resolving():
     results = _feed(sm, make_positions, start_frame=100)
     assert len(results) == 1
     assert results[0].outcome is ShotOutcome.MAKE
+
+
+# --- diagnostic reason tagging (does not change outcomes) ---
+
+
+def test_reason_make_confirmed():
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 80)])
+    assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+    assert results[0].entered_inner is True
+    assert results[0].reached_band is True
+
+
+def test_reason_rim_out_sideways():
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 45), (195, 60)])
+    assert results[0].reason is ResolutionReason.MISS_RIM_OUT_SIDEWAYS
+
+
+def test_reason_below_without_inner():
+    # Ball skips the rim band (never lands in y:50..70) while outside inner x.
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(195, 10), (195, 20), (195, 80)])
+    assert results[0].reason is ResolutionReason.MISS_BELOW_WITHOUT_INNER
+    assert results[0].entered_inner is False
+
+
+def test_reason_bounce_up():
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 30)])
+    assert results[0].reason is ResolutionReason.MISS_BOUNCE_UP
+
+
+def test_reason_occlusion_gap():
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=3, shot_timeout_frames=50))
+    results = _feed(sm, [(150, 10), (150, 20), None, None, None, None])
+    assert results[0].reason is ResolutionReason.MISS_OCCLUSION_GAP
+    # 4 consecutive Nones, grace 3 -> resolves on the 4th.
+    assert results[0].occlusion_frames_before_resolve == 4
+
+
+def test_reason_timeout_above():
+    sm = ShotStateMachine(_rim(), _config(shot_timeout_frames=5, occlusion_grace_frames=100))
+    positions = [(150, 10), (150, 20)] + [(150, 30)] * 10
+    results = _feed(sm, positions)
+    assert results[0].reason is ResolutionReason.MISS_TIMEOUT_ABOVE
+
+
+def test_result_carries_recent_trace():
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 80)])
+    trace = results[0].recent_trace
+    # Trace holds (frame_idx, pos) tuples starting at the frame the shot
+    # armed (frame 1 here — arming needs descent_min_frames=2 descending
+    # frames, so frame 0 is still pre-arm), in order through resolution.
+    assert trace[-1] == (3, (150, 80))
+    assert trace[0] == (1, (150, 20))  # arming frame recorded
+    assert results[0].armed_frames >= 1
