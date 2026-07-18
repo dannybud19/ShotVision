@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+models/*.pt
+sample_clips/
+*.mp4
+*.mov
+*.avi
+!sample_clips/.gitkeep
+shotvision/config/calibrations.json

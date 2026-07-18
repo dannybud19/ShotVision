@@ -1,0 +1,26 @@
+{
+  "camera": {
+    "source": "0"
+  },
+  "model": {
+    "weights": "models/basketball_best.pt",
+    "fallback_weights": "yolo11n.pt",
+    "device": "auto",
+    "conf": 0.35,
+    "imgsz": 640
+  },
+  "tracker": {
+    "tracker_yaml": "bytetrack.yaml"
+  },
+  "shot_logic": {
+    "inner_bound_shrink": 0.15,
+    "align_tolerance_ratio": 0.6,
+    "descent_min_frames": 2,
+    "occlusion_grace_frames": 12,
+    "shot_timeout_frames": 90,
+    "trajectory_buffer_len": 60
+  },
+  "calibration": {
+    "path": "shotvision/config/calibrations.json"
+  }
+}
