@@ -6,12 +6,21 @@ download fails.
 from __future__ import annotations
 
 import logging
+import shutil
+import ssl
 import urllib.request
 from pathlib import Path
+
+import certifi
 
 from shotvision.config.settings import ModelConfig
 
 logger = logging.getLogger(__name__)
+
+# macOS python.org builds ship without a wired-up CA bundle, which makes
+# urllib fail SSL verification for otherwise-valid HTTPS downloads. Use
+# certifi's bundle explicitly instead of relying on the system default.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 # Community YOLOv8 fine-tune with 'Basketball' + 'Basketball Hoop' classes,
 # from avishah3/AI-Basketball-Shot-Detection-Tracker. No Roboflow account
@@ -27,7 +36,9 @@ DEFAULT_CHECKPOINT_URL = (
 def _download(url: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp_dest = dest.with_suffix(dest.suffix + ".part")
-    urllib.request.urlretrieve(url, tmp_dest)
+    with urllib.request.urlopen(url, context=_SSL_CONTEXT, timeout=60) as response:
+        with open(tmp_dest, "wb") as f:
+            shutil.copyfileobj(response, f)
     tmp_dest.rename(dest)
 
 
