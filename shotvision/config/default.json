@@ -6,8 +6,8 @@
     "weights": "models/basketball_best.pt",
     "fallback_weights": "yolo11n.pt",
     "device": "auto",
-    "conf": 0.35,
-    "imgsz": 640
+    "conf": 0.15,
+    "imgsz": 960
   },
   "tracker": {
     "tracker_yaml": "bytetrack.yaml"

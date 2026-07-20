@@ -27,8 +27,11 @@ class ModelConfig:
     weights: str = "models/basketball_best.pt"
     fallback_weights: str = "yolo11n.pt"
     device: str = "auto"  # auto | cuda | mps | cpu
-    conf: float = 0.35
-    imgsz: int = 640
+    # Tuned across the sample-clip corpus: imgsz 960 + conf 0.15 roughly
+    # doubled ball-detection rate vs the untuned 640/0.35 at negligible extra
+    # compute (see scripts/tune_detection.py).
+    conf: float = 0.15
+    imgsz: int = 960
 
 
 @dataclass

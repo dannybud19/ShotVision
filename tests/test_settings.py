@@ -6,7 +6,8 @@ def test_load_config_defaults():
     assert isinstance(cfg, Config)
     assert cfg.camera.source == "0"
     assert cfg.model.device == "auto"
-    assert cfg.model.conf == 0.35
+    assert cfg.model.conf == 0.15
+    assert cfg.model.imgsz == 960
     assert cfg.shot_logic.occlusion_grace_frames == 12
 
 
