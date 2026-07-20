@@ -39,12 +39,20 @@ class BallTracker:
 
     def update(self, frame) -> list[Detection]:
         """Runs tracking on one frame, returns all canonical detections
-        (ball, hoop, person), and updates the ball trajectory buffer."""
+        (ball, hoop, person) at the tracker's low recovery floor, and
+        updates the ball trajectory buffer from the subset that clears the
+        confirmation threshold."""
         results = self.detector.model.track(
             frame,
             persist=True,
             tracker=self.tracker_yaml,
-            conf=self.detector.conf,
+            # Feed ByteTrack the full low/high recovery range it's designed
+            # for (see ModelConfig.track_conf) — filtering to the stricter
+            # confirmation threshold here would starve its low-confidence
+            # recovery of exactly the partially-occluded-ball boxes it
+            # exists to use. We still only treat detections >= self.conf as
+            # confirmed observations, below.
+            conf=self.detector.track_conf,
             imgsz=self.detector.imgsz,
             device=self.detector.device,
             verbose=False,
@@ -57,7 +65,13 @@ class BallTracker:
     def _update_trajectory(self, detections: list[Detection]) -> None:
         self.current_frame_ball_pos = None
         self.current_frame_ball_obs = None
-        ball_detections = [d for d in detections if d.class_name == BALL]
+        # Only confidence >= the confirmation threshold counts as a real
+        # observation — the lower track_conf floor above exists purely to
+        # help ByteTrack's internal association, not to feed the state
+        # machine noisier low-confidence boxes directly.
+        ball_detections = [
+            d for d in detections if d.class_name == BALL and d.conf >= self.detector.conf
+        ]
         if not ball_detections:
             return  # occlusion frame: leave trajectory/active id untouched
 

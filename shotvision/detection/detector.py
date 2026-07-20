@@ -51,6 +51,11 @@ class Detector:
         self.device = device
         self.conf = model_config.conf
         self.imgsz = model_config.imgsz
+        # Lower floor for ByteTrack's own recovery logic — see
+        # ModelConfig.track_conf. Only BallTracker uses this (passed to
+        # model.track()); predict() below still gates on the confirmation
+        # threshold, self.conf.
+        self.track_conf = model_config.track_conf
 
         self._raw_names: dict[int, str] = self.model.names
         self._id_to_canonical = {

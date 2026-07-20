@@ -87,11 +87,12 @@ def test_parse_result_handles_no_boxes():
     not BASKETBALL_WEIGHTS.exists(), reason="basketball checkpoint not downloaded"
 )
 def test_detector_loads_real_basketball_checkpoint_and_predicts():
-    cfg = ModelConfig(weights=str(BASKETBALL_WEIGHTS), conf=0.35, imgsz=640)
+    cfg = ModelConfig(weights=str(BASKETBALL_WEIGHTS), conf=0.35, imgsz=640, track_conf=0.10)
     detector = Detector(cfg, device="cpu")
 
     assert detector.has_hoop_class is True
     assert set(detector._id_to_canonical.values()) == {BALL, HOOP}
+    assert detector.track_conf == 0.10
 
     blank_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     detections = detector.predict(blank_frame)

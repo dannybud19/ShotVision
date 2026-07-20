@@ -11,12 +11,21 @@ from shotvision.tracking.ball_tracker import BallTracker, TrajectoryPoint
 BASKETBALL_WEIGHTS = Path("models/basketball_best.pt")
 
 
-def _make_tracker(buffer_len=5):
+class _FakeDetector:
+    """Stands in for the confirmation-threshold check `_update_trajectory`
+    performs — only `.conf` is read."""
+    def __init__(self, conf=0.15):
+        self.conf = conf
+
+
+def _make_tracker(buffer_len=5, confirm_conf=0.15):
     tracker = BallTracker.__new__(BallTracker)
     tracker.trajectory = deque(maxlen=buffer_len)
     tracker.frame_idx = 0
     tracker.active_ball_track_id = None
     tracker.current_frame_ball_pos = None
+    tracker.current_frame_ball_obs = None
+    tracker.detector = _FakeDetector(confirm_conf)
     return tracker
 
 
@@ -77,6 +86,41 @@ def test_reacquires_new_track_id_after_active_one_disappears():
 
     assert tracker.active_ball_track_id == 2
     assert tracker.trajectory[-1].x == 25
+
+
+def test_low_confidence_ball_below_confirmation_threshold_is_ignored():
+    # A ball detection between track_conf (fed to ByteTrack) and conf (the
+    # confirmation threshold) exists in the raw detections list but must not
+    # become a confirmed observation.
+    tracker = _make_tracker(confirm_conf=0.15)
+    low_conf_ball = Detection(BALL, 0.12, (0, 0, 10, 10), track_id=1)
+
+    tracker._update_trajectory([low_conf_ball])
+
+    assert tracker.current_frame_ball_pos is None
+    assert tracker.current_frame_ball_obs is None
+    assert len(tracker.trajectory) == 0
+
+
+def test_ball_at_or_above_confirmation_threshold_is_confirmed():
+    tracker = _make_tracker(confirm_conf=0.15)
+    ball = Detection(BALL, 0.15, (0, 0, 10, 10), track_id=1)
+
+    tracker._update_trajectory([ball])
+
+    assert tracker.current_frame_ball_pos == (5, 5)
+    assert tracker.current_frame_ball_obs is not None
+
+
+def test_current_frame_ball_obs_carries_bbox():
+    tracker = _make_tracker()
+    ball = Detection(BALL, 0.8, (10, 20, 30, 40), track_id=1)
+
+    tracker._update_trajectory([ball])
+
+    obs = tracker.current_frame_ball_obs
+    assert (obs.left, obs.top, obs.right, obs.bottom) == (10, 20, 30, 40)
+    assert obs.center == (20, 30)
 
 
 def test_trajectory_buffer_respects_maxlen():
