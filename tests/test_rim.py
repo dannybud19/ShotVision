@@ -75,3 +75,9 @@ def test_to_dict_and_from_dict_round_trip():
     rim = _sample_rim(shrink=0.15)
     restored = RimRegion.from_dict(rim.to_dict())
     assert restored == rim
+
+
+def test_from_bbox_matches_from_points():
+    from_bbox = RimRegion.from_bbox((100, 50, 200, 70), inner_bound_shrink=0.15)
+    from_points = _sample_rim(shrink=0.15)
+    assert from_bbox == from_points

@@ -81,6 +81,14 @@ class RimRegion:
             inner_right=outer_right - shrink,
         )
 
+    @classmethod
+    def from_bbox(
+        cls, bbox: tuple[float, float, float, float], inner_bound_shrink: float
+    ) -> "RimRegion":
+        """bbox: (x1, y1, x2, y2), e.g. a model's hoop detection box."""
+        x1, y1, x2, y2 = bbox
+        return cls.from_points([(x1, y1), (x2, y1), (x1, y2), (x2, y2)], inner_bound_shrink)
+
     def to_dict(self) -> dict:
         return {
             "outer_left": self.outer_left,
