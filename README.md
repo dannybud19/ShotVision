@@ -149,18 +149,31 @@ makes, rim-outs, upward bounces off the rim, occlusion within/beyond grace,
 net occlusion, timeouts, misaligned motion).
 
 Summary: a shot arms when the ball is seen above the rim, roughly aligned
-with it horizontally, and descending for a few consecutive frames. It
-resolves **MAKE** only if the ball then passes through the rim's inner
-horizontal gate while in the rim's vertical band, and continues below the
-rim without bouncing back up above rim height. Every ambiguous case —
-rim-out, upward bounce, skipping the band without ever registering inside
-the inner gate, or the shot never resolving — is scored **MISS**, never
-MAKE.
+with it horizontally, and descending for a few consecutive frames. Scoring is
+then **trajectory-crossing based**: we track the ball's path and test whether
+the *segment* between two consecutive observed positions crosses the rim's
+horizontal midline (`rim.rim_y`), and where. It resolves **MAKE** only if that
+crossing falls inside the rim's inner horizontal gate **and** the whole ball
+(its bounding-box top edge) then reaches below the outlined rim without
+bouncing back up. Every ambiguous case — crossing outside the inner gate
+(rim-out), the whole ball reaching below without a valid crossing, an upward
+bounce after reaching the rim, or the shot never resolving — is scored
+**MISS**, never MAKE.
+
+Why crossing instead of "did a detection land inside the rim band": a
+descending ball, especially at a modest detection rate, jumps over a thin rim
+band between frames and is often occluded by the net exactly as it passes
+through — so requiring a detection to land *inside* the band misses real makes.
+Interpolating the crossing between the last position above the rim and the
+first below it recovers the make regardless of band thickness or a detection
+gap through the net. (This replaced the earlier band-membership approach, which
+scored 0 makes on a test clip whose rim happened to calibrate to a 3px-tall
+band; the crossing approach scores those makes correctly.)
 
 A brief gap in ball detection (hand at release, ball hidden in the net)
 doesn't fail a shot by itself — only a gap longer than
-`shot_logic.occlusion_grace_frames` does. This is frame-count based and
-doesn't look at the net at all, so it behaves the same for netted and
+`shot_logic.occlusion_grace_frames` does, and the crossing test spans such gaps.
+It doesn't look at the net at all, so it behaves the same for netted and
 net-less rims.
 
 ## Known limitations
