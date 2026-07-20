@@ -5,12 +5,22 @@ missed detections, so every ambiguous case resolves to MISS, never MAKE.
 
 Scoring is **trajectory-crossing based**, not band-membership based. Rather
 than requiring a ball detection to land inside the rim's (possibly very thin)
-vertical band, we test whether the *segment* between two consecutive observed
-ball positions crosses the rim's horizontal midline (`rim.rim_y`), and where.
-This is robust to sparse detections and thin calibrations — the ball can be
-occluded or simply not detected while passing through the rim, and we still
-recover the crossing by interpolating between the last position above the rim
-and the first below it.
+vertical band, we test whether the ball's path crosses the rim's horizontal
+midline (`rim.rim_y`), and where. This is robust to sparse detections and
+thin calibrations — the ball can be occluded or simply not detected while
+passing through the rim, and we still recover the crossing.
+
+The crossing x is estimated with `_fit_cross_x`: a least-squares line over the
+last few *confirmed* observations (`_CROSSING_FIT_WINDOW`), not just the two
+points immediately bracketing the crossing. With exactly 2 points this is
+identical to straight-line interpolation; with more, it uses the shape of the
+approach instead of trusting a single potentially-noisy endpoint (a bbox
+distorted by partial net occlusion, motion blur, etc. right at the rim — the
+highest-risk region for a bad reading). Trade-off, deliberate and tested
+(`test_fit_cross_x_uses_full_window_not_just_last_two_points`): a single
+suspicious last-instant position can no longer unilaterally flip the outcome
+when preceded by a consistent approach; only a sustained drift across the
+window does.
 
 Flow (per ball observation fed in frame by frame):
   IDLE  -> ARMED : ball above the rim, roughly aligned horizontally, and
@@ -46,6 +56,13 @@ _DESCENT_JITTER_PX = 3.0
 # diagnostics (both detected positions and None occlusion frames).
 _TRACE_LEN = 8
 
+# How many recent *confirmed* observations to use when estimating where the
+# ball's path crosses the rim line. More than 2 points lets the estimate use
+# the shape of the approach instead of a single fragile 2-point straight
+# line across a detection gap; naturally degrades to a 2-point line when
+# fewer points are available (e.g. right after arming).
+_CROSSING_FIT_WINDOW = 4
+
 
 @dataclass
 class BallObservation:
@@ -75,13 +92,25 @@ class BallObservation:
         return cls(x=x, y=y, left=x - radius, top=y - radius, right=x + radius, bottom=y + radius)
 
 
-def _interp_x_at_y(p0: tuple[float, float], p1: tuple[float, float], y: float) -> float:
-    """X coordinate where the segment p0->p1 crosses the horizontal line at y."""
-    (x0, y0), (x1, y1) = p0, p1
-    if y1 == y0:
-        return x1
-    t = (y - y0) / (y1 - y0)
-    return x0 + (x1 - x0) * t
+def _fit_cross_x(points: list[tuple[float, float]], target_y: float) -> float:
+    """Estimate the x coordinate at `target_y` from a small window of recent
+    (x, y) observations via a least-squares line x = m*y + c. With exactly 2
+    points this is identical to straight-line interpolation between them;
+    with more points it uses the shape of the approach instead of trusting a
+    single pair of (possibly noisy, possibly gap-spanning) endpoints."""
+    n = len(points)
+    if n == 1:
+        return points[0][0]
+
+    mean_y = sum(y for _, y in points) / n
+    mean_x = sum(x for x, _ in points) / n
+    num = sum((y - mean_y) * (x - mean_x) for x, y in points)
+    den = sum((y - mean_y) ** 2 for _, y in points)
+    if den == 0:
+        return mean_x
+    m = num / den
+    c = mean_x - m * mean_y
+    return m * target_y + c
 
 
 class ShotState(Enum):
@@ -137,7 +166,10 @@ class ShotStateMachine:
     def _reset_armed(self) -> None:
         self._passed_through = False
         self._reached_rim = False
-        self._prev_obs: BallObservation | None = None
+        # Rolling window of confirmed observations made so far this armed
+        # shot (most recent last), used both as "the previous point" for the
+        # crossing trigger and as the fit window for _fit_cross_x.
+        self._recent: deque[BallObservation] = deque(maxlen=_CROSSING_FIT_WINDOW)
         self._frames_since_detection = 0
         self._frames_in_state = 0
         # Rolling record of the armed shot's frames for diagnostics.
@@ -173,7 +205,7 @@ class ShotStateMachine:
                 self._reset_prearm()
                 self._reset_armed()
                 self.state = ShotState.ARMED
-                self._prev_obs = obs  # seed the trajectory for crossing tests
+                self._recent.append(obs)  # seed the trajectory for crossing tests
                 self._trace.append((frame_idx, obs.center))
         else:
             self._reset_prearm()
@@ -194,13 +226,16 @@ class ShotStateMachine:
         self._frames_since_detection = 0
         x, y = obs.center
         rim = self.rim
+        prev = self._recent[-1] if self._recent else None
 
-        # Did the segment from the previous detected position to this one cross
-        # the rim line going downward? (Spans occlusion gaps — prev is the last
-        # *detected* position, not necessarily the immediately previous frame.)
-        if self._prev_obs is not None and self._prev_obs.y < rim.rim_y <= y:
+        # Did the segment from the previous confirmed position to this one
+        # cross the rim line going downward? (Spans occlusion/low-confidence
+        # gaps — prev is the last *confirmed* position, not necessarily the
+        # immediately previous frame.)
+        if prev is not None and prev.y < rim.rim_y <= y:
             self._reached_rim = True
-            cross_x = _interp_x_at_y(self._prev_obs.center, obs.center, rim.rim_y)
+            fit_points = [p.center for p in self._recent] + [obs.center]
+            cross_x = _fit_cross_x(fit_points, rim.rim_y)
             if rim.is_inside_inner_bounds(cross_x):
                 self._passed_through = True
             else:
@@ -226,7 +261,7 @@ class ShotStateMachine:
         if self._frames_in_state > self.config.shot_timeout_frames:
             return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_ABOVE)
 
-        self._prev_obs = obs
+        self._recent.append(obs)
         return None
 
     def _resolve(

@@ -7,6 +7,7 @@ from shotvision.shot_logic.state_machine import (
     ShotOutcome,
     ShotState,
     ShotStateMachine,
+    _fit_cross_x,
 )
 
 
@@ -68,11 +69,14 @@ def test_clean_make_through_center_of_inner_bounds():
 
 
 def test_rim_out_exits_inner_bounds_at_rim_height():
+    # Progressive rightward drift (realistic deflection shape, not a single
+    # last-instant jump) landing outside inner_right=185 at the rim line.
     sm = ShotStateMachine(_rim(), _config())
     positions = [
         (150, 10), (150, 20),  # arm
-        (150, 45),
-        (195, 60),              # in band but x=195 > inner_right=185 -> rim-out
+        (165, 35),
+        (180, 48),
+        (200, 65),              # crosses rim_y=60 with estimated x ~194 -> rim-out
     ]
     results = _feed(sm, positions)
     assert len(results) == 1
@@ -185,7 +189,7 @@ def test_reason_make_confirmed():
 
 def test_reason_rim_out_sideways():
     sm = ShotStateMachine(_rim(), _config())
-    results = _feed(sm, [(150, 10), (150, 20), (150, 45), (195, 60)])
+    results = _feed(sm, [(150, 10), (150, 20), (165, 35), (180, 48), (200, 65)])
     assert results[0].reason is ResolutionReason.MISS_RIM_OUT_SIDEWAYS
 
 
@@ -279,3 +283,56 @@ def test_whole_ball_must_be_below_rim_to_confirm_make():
     result = sm.update(below, 3)
     assert result is not None
     assert result.outcome is ShotOutcome.MAKE
+
+
+# --- _fit_cross_x: multi-point crossing estimate ---
+
+
+def test_fit_cross_x_two_points_matches_linear_interpolation():
+    # With exactly 2 points the least-squares fit must reduce to the same
+    # straight-line interpolation the old 2-point-only formula used.
+    x = _fit_cross_x([(100, 40), (200, 60)], target_y=50)
+    assert x == pytest.approx(150)
+
+
+def test_fit_cross_x_single_point_returns_its_x():
+    assert _fit_cross_x([(123, 45)], target_y=999) == 123
+
+
+def test_fit_cross_x_degenerate_same_y_returns_mean_x():
+    # All points share a y (den=0 in the least-squares formula) -> no slope
+    # info; fall back to the mean x rather than dividing by zero.
+    x = _fit_cross_x([(100, 30), (200, 30), (150, 30)], target_y=30)
+    assert x == pytest.approx(150)
+
+
+def test_fit_cross_x_uses_full_window_not_just_last_two_points():
+    # Approach trajectory sits consistently near x=150-152, then the frame
+    # exactly at the crossing reads x=188 (single-frame noise: a partially
+    # net-occluded bbox, motion blur, etc). A pure 2-point line trusts that
+    # one noisy endpoint completely; the multi-point fit pulls the estimate
+    # back toward the established trend instead.
+    two_point_only = _fit_cross_x([(152, 40), (188, 60)], target_y=60)
+    with_history = _fit_cross_x([(150, 20), (152, 40), (188, 60)], target_y=60)
+    assert with_history < two_point_only
+    assert two_point_only == pytest.approx(188)  # unchanged: identical to old formula
+
+
+def test_multi_point_fit_recovers_make_that_two_point_interpolation_would_miss():
+    # Same shape as the diagnosed real-clip failures (state_machine.py trace
+    # showed makes scored MISS off a single noisy post-gap detection) but with
+    # one extra confirmed point along the approach. A naive 2-point line
+    # between (152,40) and (188,60) gives x=188 (outside inner_right=185,
+    # would resolve MISS_RIM_OUT_SIDEWAYS); the multi-point fit uses the
+    # earlier (150,20) point too and correctly lands inside the inner gate.
+    sm = ShotStateMachine(_rim(), _config())
+    positions = [
+        (150, 10), (150, 20),  # arm
+        (152, 40),
+        (188, 60),              # crossing frame: fit (with history) -> ~182, inside
+        (188, 80),               # whole ball below -> MAKE
+    ]
+    results = _feed(sm, positions)
+    assert len(results) == 1
+    assert results[0].outcome is ShotOutcome.MAKE
+    assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
