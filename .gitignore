@@ -9,4 +9,3 @@ sample_clips/*
 *.avi
 !sample_clips/.gitkeep
 !sample_clips/SOURCES.md
-shotvision/config/calibrations.json

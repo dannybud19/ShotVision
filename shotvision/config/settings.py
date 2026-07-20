@@ -42,6 +42,15 @@ class ModelConfig:
     # out before it ever sees them. Never surfaced as a confirmed observation
     # by itself — only `conf`-and-above detections are.
     track_conf: float = 0.10
+    # Confirmation threshold for HOOP detections feeding automatic rim
+    # tracking (shot_logic/rim_tracker.py). Stricter than ball `conf` by
+    # design: a false hoop reading corrupts the scoring geometry itself,
+    # which is higher-stakes than a missed ball frame. Set from
+    # scripts/tune_detection.py's hoop sweep at imgsz=960: mean hoop
+    # detection is 89.4% at conf=0.50 and 88.6% at conf=0.60 — the curve is
+    # gentle enough to afford the stricter bar for well under 1% of detection
+    # rate, and the rim tracker's own occlusion tolerance covers brief gaps.
+    rim_conf: float = 0.60
 
 
 @dataclass
@@ -64,11 +73,21 @@ class ShotLogicConfig:
     # Frames since a shot armed before it's forced to resolve as a MISS.
     shot_timeout_frames: int = 90
     trajectory_buffer_len: int = 60
-
-
-@dataclass
-class CalibrationConfig:
-    path: str = "shotvision/config/calibrations.json"
+    # --- automatic rim tracking (shot_logic/rim_tracker.py) ---
+    # Exponential-moving-average smoothing factor applied to the hoop box
+    # each frame it's confirmed. Higher = more responsive to real camera
+    # motion; lower = more resistant to per-frame detection jitter.
+    rim_ema_alpha: float = 0.25
+    # Consecutive no-hoop-detection frames tolerated before the tracked rim
+    # is considered lost (reverts to None) rather than just briefly occluded.
+    # Generous given hoop detection measured ~89-96% at our tuned settings.
+    rim_lost_grace_frames: int = 30
+    # A new hoop reading is rejected if its box area differs from the
+    # current smoothed estimate by more than this ratio — a real hoop's
+    # on-screen size changes gradually with camera motion, not in one frame;
+    # guards against a stray misclassification corrupting the scoring
+    # geometry.
+    rim_size_jump_max_ratio: float = 1.6
 
 
 @dataclass
@@ -77,7 +96,6 @@ class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     tracker: TrackerConfig = field(default_factory=TrackerConfig)
     shot_logic: ShotLogicConfig = field(default_factory=ShotLogicConfig)
-    calibration: CalibrationConfig = field(default_factory=CalibrationConfig)
 
 
 _SECTION_TYPES = {
@@ -85,7 +103,6 @@ _SECTION_TYPES = {
     "model": ModelConfig,
     "tracker": TrackerConfig,
     "shot_logic": ShotLogicConfig,
-    "calibration": CalibrationConfig,
 }
 
 

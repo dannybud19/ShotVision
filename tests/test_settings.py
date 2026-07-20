@@ -10,7 +10,12 @@ def test_load_config_defaults():
     assert cfg.model.imgsz == 960
     assert cfg.model.track_conf == 0.10
     assert cfg.model.track_conf < cfg.model.conf  # recovery floor stays below confirmation bar
+    assert cfg.model.rim_conf == 0.60
     assert cfg.shot_logic.occlusion_grace_frames == 12
+    assert cfg.shot_logic.rim_ema_alpha == 0.25
+    assert cfg.shot_logic.rim_lost_grace_frames == 30
+    assert cfg.shot_logic.rim_size_jump_max_ratio == 1.6
+    assert not hasattr(cfg, "calibration")  # manual calibration fully removed
 
 
 def test_cli_overrides_apply_and_coerce_types():

@@ -8,7 +8,8 @@
     "device": "auto",
     "conf": 0.15,
     "imgsz": 960,
-    "track_conf": 0.10
+    "track_conf": 0.10,
+    "rim_conf": 0.60
   },
   "tracker": {
     "tracker_yaml": "bytetrack.yaml"
@@ -19,9 +20,9 @@
     "descent_min_frames": 2,
     "occlusion_grace_frames": 12,
     "shot_timeout_frames": 90,
-    "trajectory_buffer_len": 60
-  },
-  "calibration": {
-    "path": "shotvision/config/calibrations.json"
+    "trajectory_buffer_len": 60,
+    "rim_ema_alpha": 0.25,
+    "rim_lost_grace_frames": 30,
+    "rim_size_jump_max_ratio": 1.6
   }
 }
