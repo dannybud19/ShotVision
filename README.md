@@ -101,6 +101,29 @@ On CPU-only hardware, the COCO fallback path also selects a smaller model
 size (`n` vs `s`) to keep frame rate usable; the default basketball
 checkpoint is a fixed fine-tune independent of device.
 
+## Detection tuning
+
+The ball is small and fast, and the default checkpoint's out-of-the-box
+detection rate at `imgsz=640`/`conf=0.35` was low (~11% of frames on the test
+clip). `scripts/tune_detection.py` sweeps `imgsz` × `conf` across the sample
+clips and reports ball-detection rate and ms/frame:
+
+```bash
+python scripts/tune_detection.py                       # full sweep + matrix
+python scripts/tune_detection.py --save-samples        # also dump annotated frames
+```
+
+Based on that sweep the defaults are now **`imgsz=960`, `conf=0.15`** (mean
+ball-detection across the corpus 32% → 51%, at ~14 ms/frame on MPS vs ~13.5 at
+640). `imgsz=1280` added little on average, cost ~25% more compute, and was
+unstable across clips, so 960 was chosen. Note the trade-off: raising `imgsz`
+improves small-ball detection but slows inference; lowering `conf` recovers
+faint detections but admits more false positives (mitigated by ByteTrack and
+the descent/alignment gating in the state machine). `--save-samples` writes
+annotated frames to `sample_clips/_debug/` so false positives can be eyeballed.
+These are config values (`model.imgsz`, `model.conf`) — re-tune against your own
+footage with the same script and update `config/default.json`.
+
 ## Rim calibration
 
 On first run against a given camera source (file path, device index, or
