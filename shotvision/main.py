@@ -100,7 +100,7 @@ def run(config: Config, loop: bool = False) -> None:
                     break
 
                 ball_tracker.update(frame)
-                result = state_machine.update(ball_tracker.current_frame_ball_pos, frame_idx)
+                result = state_machine.update(ball_tracker.current_frame_ball_obs, frame_idx)
                 if result is not None:
                     stats.record(result)
                     hud.note_result(result.outcome, frame_idx)

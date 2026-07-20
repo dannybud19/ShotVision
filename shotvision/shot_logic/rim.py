@@ -27,6 +27,19 @@ class RimRegion:
     def center_x(self) -> float:
         return (self.outer_left + self.outer_right) / 2
 
+    @property
+    def rim_y(self) -> float:
+        """The horizontal scoring plane — the rim's vertical midline. A made
+        shot's path crosses this line while within the inner horizontal gate.
+        Using a single line (not the full band) makes scoring robust to sparse
+        detections and thin calibrations: we test whether the segment between
+        two consecutive ball positions crosses it, not whether a detection
+        happened to land inside the band."""
+        return (self.outer_top + self.outer_bottom) / 2
+
+    def is_within_outer_x(self, x: float) -> bool:
+        return self.outer_left <= x <= self.outer_right
+
     def is_aligned(self, x: float, tolerance_ratio: float) -> bool:
         """True if x is within tolerance_ratio * outer_width of rim center
         (on top of the rim's own half-width) — the 'roughly aligned

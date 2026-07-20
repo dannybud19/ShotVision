@@ -190,9 +190,10 @@ def test_reason_rim_out_sideways():
 
 
 def test_reason_below_without_inner():
-    # Ball skips the rim band (never lands in y:50..70) while outside inner x.
+    # Ball arms aligned, then its path crosses the rim line entirely outside
+    # the outlined rim (interpolated crossing x > outer_right=200).
     sm = ShotStateMachine(_rim(), _config())
-    results = _feed(sm, [(195, 10), (195, 20), (195, 80)])
+    results = _feed(sm, [(150, 10), (150, 20), (250, 80)])
     assert results[0].reason is ResolutionReason.MISS_BELOW_WITHOUT_INNER
     assert results[0].entered_inner is False
 
@@ -228,3 +229,53 @@ def test_result_carries_recent_trace():
     assert trace[-1] == (3, (150, 80))
     assert trace[0] == (1, (150, 20))  # arming frame recorded
     assert results[0].armed_frames >= 1
+
+
+# --- crossing-based scoring robustness (the point of the rewrite) ---
+
+
+def test_make_scored_even_with_a_thin_rim_band():
+    # A 3px-tall rim band (like the miscalibration that broke band-membership
+    # scoring). The ball is never detected *inside* the band, jumping from
+    # above it to below it — crossing interpolation must still score the make.
+    thin_rim = RimRegion.from_points(
+        [(100, 166), (200, 166), (100, 169), (200, 169)], inner_bound_shrink=0.15
+    )
+    sm = ShotStateMachine(thin_rim, _config())
+    # arm above (y<166), then a single detection well below the 3px band,
+    # aligned through the center — no detection ever lands in y:166..169.
+    results = _feed(sm, [(150, 150), (150, 158), (150, 190)])
+    assert len(results) == 1
+    assert results[0].outcome is ShotOutcome.MAKE
+    assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_make_scored_when_ball_is_occluded_through_the_rim():
+    # Ball detected above the rim, then occluded (None) for several frames as
+    # it passes through the net, reappearing below. The crossing spans the gap.
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=6))
+    results = _feed(sm, [(150, 10), (150, 20), None, None, None, (150, 90)])
+    assert len(results) == 1
+    assert results[0].outcome is ShotOutcome.MAKE
+    assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_whole_ball_must_be_below_rim_to_confirm_make():
+    # After a valid through-crossing, a ball whose center is below the rim line
+    # but whose body still straddles the rim (bbox top above outer_bottom) is
+    # NOT yet confirmed; it only resolves once the whole ball clears the rim.
+    from shotvision.shot_logic.state_machine import BallObservation
+
+    sm = ShotStateMachine(_rim(), _config())  # rim y:50..70, rim_y=60
+    sm.update((150, 40), 0)
+    sm.update((150, 48), 1)  # armed
+    # crossing frame: center just below rim_y but bbox top (65) still above
+    # outer_bottom (70) -> through-crossing registered, not yet resolved.
+    straddle = BallObservation(x=150, y=68, left=145, top=65, right=155, bottom=71)
+    assert sm.update(straddle, 2) is None
+    assert sm.state is ShotState.ARMED
+    # now the whole ball is below the rim -> make confirms.
+    below = BallObservation.from_bbox((145, 72, 155, 82))
+    result = sm.update(below, 3)
+    assert result is not None
+    assert result.outcome is ShotOutcome.MAKE

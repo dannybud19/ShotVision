@@ -107,12 +107,12 @@ def main() -> None:
                 break
             total += 1
             detections = ball_tracker.update(frame)
-            pos = ball_tracker.current_frame_ball_pos
-            if pos is not None:
+            obs = ball_tracker.current_frame_ball_obs
+            if obs is not None:
                 ball_frames += 1
-                if rim.is_in_band(pos[1]):
+                if rim.is_in_band(obs.y):
                     in_band_ball_frames += 1
-            result = state_machine.update(pos, total - 1)
+            result = state_machine.update(obs, total - 1)
             if result is not None:
                 results.append(result)
 
@@ -121,7 +121,8 @@ def main() -> None:
     print(f"Ball detected in {ball_frames}/{total} frames ({pct:.1f}%)")
     print(
         f"Ball detected *inside the rim band* in {in_band_ball_frames} frames "
-        f"(these are the only frames that can register a make)"
+        f"(crossing-based scoring no longer needs these, but low values here "
+        f"confirm why band-membership scoring failed)"
     )
 
     print(f"\n{'='*70}\nPer-shot breakdown ({len(results)} resolved shots)\n{'='*70}")
