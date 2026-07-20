@@ -7,7 +7,8 @@
     "fallback_weights": "yolo11n.pt",
     "device": "auto",
     "conf": 0.15,
-    "imgsz": 960
+    "imgsz": 960,
+    "track_conf": 0.10
   },
   "tracker": {
     "tracker_yaml": "bytetrack.yaml"

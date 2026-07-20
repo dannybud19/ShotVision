@@ -29,9 +29,19 @@ class ModelConfig:
     device: str = "auto"  # auto | cuda | mps | cpu
     # Tuned across the sample-clip corpus: imgsz 960 + conf 0.15 roughly
     # doubled ball-detection rate vs the untuned 640/0.35 at negligible extra
-    # compute (see scripts/tune_detection.py).
+    # compute (see scripts/tune_detection.py). `conf` is the *confirmation*
+    # threshold — the bar a detection must clear to count as a real ball
+    # observation for the state machine.
     conf: float = 0.15
     imgsz: int = 960
+    # Confidence floor fed into model.track() (ByteTrack), separate from and
+    # below `conf`. Matches bytetrack.yaml's default track_low_thresh so
+    # ByteTrack's own low-confidence recovery (designed to sustain a track
+    # through partial occlusion, e.g. a ball partly hidden by net cords) gets
+    # the full population of candidate boxes instead of having them filtered
+    # out before it ever sees them. Never surfaced as a confirmed observation
+    # by itself — only `conf`-and-above detections are.
+    track_conf: float = 0.10
 
 
 @dataclass
