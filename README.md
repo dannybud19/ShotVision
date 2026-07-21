@@ -10,11 +10,11 @@ later phases can be added without a rewrite.
 
 ```
 shotvision/
-  config/       dataclass config, default.json, calibrations.json
+  config/       dataclass config, default.json
   capture/      FrameSource — video file / device / stream URL, one interface
   detection/    device auto-detect, checkpoint resolution, YOLO wrapper
   tracking/     ByteTrack-based ball tracking + trajectory buffer
-  shot_logic/   rim geometry, rim calibration, make/miss state machine
+  shot_logic/   rim geometry, automatic rim tracking, make/miss state machine
   stats/        makes/misses/attempts/percentage + per-shot log
   overlay/      HUD: rim box, trajectory trail, counters
   main.py       wires the pipeline, keyboard loop
@@ -39,8 +39,11 @@ On first run, `shotvision.detection.model_registry` downloads the default
 basketball checkpoint (~6MB) to `models/basketball_best.pt` automatically —
 no Roboflow account needed. If that download fails, it falls back to a
 stock COCO checkpoint (`yolo11n.pt`, auto-downloaded by ultralytics), which
-detects the ball as a generic `sports ball` and has no hoop class at all
-(the rim then comes entirely from manual calibration).
+detects the ball as a generic `sports ball` and has **no hoop class at
+all** — since rim location is now fully automatic (see Rim tracking below)
+and there's no manual fallback, the fallback path can locate the ball but
+not the rim, and shot logic won't run. The basketball checkpoint download
+succeeding is effectively required for this to work end-to-end.
 
 ### macOS SSL note
 
@@ -84,7 +87,7 @@ Or point at a JSON file of overrides with `--config path/to/overrides.json`.
 | Key   | Action |
 |-------|--------|
 | `q`   | Quit |
-| `r`   | Force rim recalibration |
+| `r`   | Force the rim tracker to drop its estimate and reacquire |
 | `[` / `]` | Decrease / increase detection confidence threshold |
 | `space` | Pause / resume |
 
@@ -106,14 +109,16 @@ checkpoint is a fixed fine-tune independent of device.
 The ball is small and fast, and the default checkpoint's out-of-the-box
 detection rate at `imgsz=640`/`conf=0.35` was low (~11% of frames on the test
 clip). `scripts/tune_detection.py` sweeps `imgsz` × `conf` across the sample
-clips and reports ball-detection rate and ms/frame:
+clips and reports detection rate and ms/frame for **both** the ball and the
+hoop (they come from the same inference pass, so measuring both costs
+nothing extra):
 
 ```bash
-python scripts/tune_detection.py                       # full sweep + matrix
+python scripts/tune_detection.py                       # full sweep + both matrices
 python scripts/tune_detection.py --save-samples        # also dump annotated frames
 ```
 
-Based on that sweep the defaults are now **`imgsz=960`, `conf=0.15`** (mean
+Based on that sweep the ball defaults are **`imgsz=960`, `conf=0.15`** (mean
 ball-detection across the corpus 32% → 51%, at ~14 ms/frame on MPS vs ~13.5 at
 640). `imgsz=1280` added little on average, cost ~25% more compute, and was
 unstable across clips, so 960 was chosen. Note the trade-off: raising `imgsz`
@@ -124,18 +129,44 @@ annotated frames to `sample_clips/_debug/` so false positives can be eyeballed.
 These are config values (`model.imgsz`, `model.conf`) — re-tune against your own
 footage with the same script and update `config/default.json`.
 
-## Rim calibration
+Hoop detection at imgsz=960 is far more reliable than the ball ever was
+(89.4% at conf=0.50, 88.6% at conf=0.60 — a gentle curve), so
+`model.rim_conf` is set much stricter (**0.60**) than ball `conf`: a false
+hoop reading corrupts the scoring geometry itself, which is higher-stakes
+than a missed ball frame, and the gentle curve means little detection rate
+is sacrificed for that safety margin.
 
-On first run against a given camera source (file path, device index, or
-URL), a window opens on the first frame and waits for **4 clicks** around
-the rim, defining its bounding region. The result is saved to
-`shotvision/config/calibrations.json`, keyed by that exact source, so it
-isn't needed again on subsequent runs of the same source. Press `r` at any
-time to force recalibration (e.g. after moving the camera).
+## Rim tracking
 
-The 4 points define an axis-aligned bounding box (order doesn't matter).
-Internally this becomes two regions: the **outer box** (used for
-above/at/below-rim tests) and a narrower **inner horizontal gate**
+The rim is located **automatically** from the model's own hoop detections —
+there's no manual calibration step. `shotvision.shot_logic.rim_tracker.RimTracker`
+consumes the same per-frame detections `BallTracker` already computes (no
+extra inference cost) and turns a raw hoop box into a stable `RimRegion`:
+
+- **Confirmation gate**: only hoop detections at or above `model.rim_conf`
+  count.
+- **EMA smoothing** (`shot_logic.rim_ema_alpha`, default 0.25) damps
+  per-frame jitter while still tracking real camera motion — several of the
+  sample clips pan or zoom, so a one-time snapshot wouldn't stay correct.
+- **Occlusion tolerance** (`shot_logic.rim_lost_grace_frames`, default 30):
+  a frame with no hoop detection keeps the last good rim rather than
+  failing immediately; beyond that many consecutive misses, the rim is
+  considered lost and reacquired fresh from the next confident reading.
+- **Size-jump sanity gate** (`shot_logic.rim_size_jump_max_ratio`, default
+  1.6×): a real hoop's on-screen size changes gradually with camera motion,
+  not in one frame — a sudden large jump is more likely a stray
+  misclassification than the real hoop, and is rejected (treated like a
+  missed detection) rather than corrupting the tracked geometry.
+
+Shot-logic evaluation simply doesn't start until the rim tracker first locks
+on (typically within the first few frames given the detection rates above);
+main.py's HUD and the make/miss state machine tolerate a `None` rim
+gracefully during that window. Press `r` at any time to force the tracker to
+drop its current estimate and reacquire (e.g. if the camera setup changes
+significantly mid-run).
+
+Internally the tracked hoop box becomes two regions: the **outer box** (used
+for above/at/below-rim tests) and a narrower **inner horizontal gate**
 (`shot_logic.inner_bound_shrink` in config, default 15% shrink per side) —
 a make requires the ball to pass through the middle of the rim, not clip an
 edge. This is deliberately false-positive-averse: rim-outs and near-misses
