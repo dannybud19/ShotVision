@@ -448,6 +448,49 @@ def _qualifying_frames_in_window(data: ClipData, window: ShotWindow) -> int:
     return count
 
 
+@dataclass
+class DetectionBreakdown:
+    total_frames: int
+    detected_frames: int
+    failed_above: int  # of detected_frames, count where NOT is_above(y)
+    failed_aligned: int  # of detected_frames, count where NOT is_aligned(x)
+    qualifying: int  # detected AND is_above AND is_aligned (descent not required)
+
+
+def _detection_breakdown_in_window(data: ClipData, window: ShotWindow) -> DetectionBreakdown | None:
+    """Separates 'no raw detection at all' from 'detected but failed the
+    geometric qualifying test' — the open question this diagnostic exists to
+    answer. failed_above/failed_aligned are independent counts (each out of
+    detected_frames, not a partition), so a frame can fail one, the other,
+    or both; qualifying is the AND of both, matching
+    `_qualifying_frames_in_window` for a cross-check."""
+    if window.start < 0:
+        return None
+    cfg = data.config
+    total = 0
+    detected = 0
+    failed_above = 0
+    failed_aligned = 0
+    qualifying = 0
+    for rec in data.frames:
+        if not (window.start <= rec.frame_idx <= window.end):
+            continue
+        total += 1
+        if rec.obs is None or rec.rim is None:
+            continue
+        detected += 1
+        x, y = rec.obs.x, rec.obs.y
+        above = rec.rim.is_above(y)
+        aligned = rec.rim.is_aligned(x, cfg.align_tolerance_ratio)
+        if not above:
+            failed_above += 1
+        if not aligned:
+            failed_aligned += 1
+        if above and aligned:
+            qualifying += 1
+    return DetectionBreakdown(total, detected, failed_above, failed_aligned, qualifying)
+
+
 def run_sweep(reports: list[ClipReport], clip_data: dict[str, ClipData], grid: list[tuple[int, int]]):
     all_missing = [(r.source, w) for r in reports for w in r.missing_windows]
     n_missing_total = len(all_missing)
@@ -463,6 +506,37 @@ def run_sweep(reports: list[ClipReport], clip_data: dict[str, ClipData], grid: l
         data = clip_data[source]
         qc = _qualifying_frames_in_window(data, w)
         print(f"  {Path(source).name:38s} {w.label:55s} qualifying frames in window: {qc}")
+
+    print(f"\n{'=' * 78}\nDetection breakdown: is the ball undetected, or detected-but-failing-geometry?\n{'=' * 78}")
+    print(
+        "(splits each missing window's frames into: no raw detection at all, vs.\n"
+        " detected but failing is_above, vs. detected but failing is_aligned — the\n"
+        " open question docs/tracking-research.md Section 4 flags as pivotal: a\n"
+        " detection-rate problem needs a detection upgrade, a geometry problem\n"
+        " needs only a threshold/config change)"
+    )
+    for source, w in all_missing:
+        data = clip_data[source]
+        bd = _detection_breakdown_in_window(data, w)
+        if bd is None:
+            print(f"  {Path(source).name:38s} {w.label:55s} (window not localized)")
+            continue
+        detect_rate = bd.detected_frames / bd.total_frames * 100 if bd.total_frames else 0.0
+        print(
+            f"  {Path(source).name:38s} {w.label}\n"
+            f"      total_frames={bd.total_frames}  detected={bd.detected_frames} "
+            f"({detect_rate:.0f}%)  failed_is_above={bd.failed_above}  "
+            f"failed_is_aligned={bd.failed_aligned}  qualifying={bd.qualifying}"
+        )
+        # Shape check: is the window catching the ball mid-descent (above ->
+        # in-band/below), or only after it's already at/below rim height for
+        # its entire span? Prints classify_position for every detected frame.
+        for rec in data.frames:
+            if not (w.start <= rec.frame_idx <= w.end):
+                continue
+            if rec.obs is None or rec.rim is None:
+                continue
+            print(f"        f{rec.frame_idx}: {classify_position(rec.rim, (rec.obs.x, rec.obs.y))}")
 
     print(f"\n{'=' * 78}\nBaseline correctness check (today's _update_idle, replicated locally)\n{'=' * 78}")
     rescued_baseline = 0
