@@ -27,7 +27,7 @@ from shotvision.detection.detector import Detector
 from shotvision.detection.device import log_device_choice, resolve_device
 from shotvision.shot_logic.rim import RimRegion
 from shotvision.shot_logic.rim_tracker import RimTracker
-from shotvision.shot_logic.state_machine import ShotOutcome, ShotStateMachine
+from shotvision.shot_logic.state_machine import ShotOutcome, ShotState, ShotStateMachine
 from shotvision.tracking.ball_tracker import BallTracker
 
 
@@ -73,6 +73,30 @@ def main() -> None:
     rim_acquired_frame: int | None = None
     results = []
 
+    # --- Diagnostic-only extension: surface shot attempts that never armed ---
+    # `results` only holds *resolved* ShotResults. But shot_logic/state_machine.py
+    # `_update_idle` resets the pre-arm descent streak to zero on ANY single
+    # missed ball detection (no occlusion-grace tolerance there, unlike the
+    # armed phase, which tolerates `occlusion_grace_frames` gaps). At this
+    # project's real ball-detection rates, a genuine shot attempt can easily
+    # never accumulate `descent_min_frames` consecutive detected+aligned+above
+    # -rim frames, so it never reaches ShotState.ARMED and produces ZERO
+    # ShotResults — silently invisible rather than an explicit MISS.
+    #
+    # This block does not touch shot_logic/ at all — it only *observes* the
+    # already-public `state_machine.state` to log exact IDLE->ARMED
+    # transitions, and independently reconstructs the arming *precondition*
+    # (ball detected, above the rim, horizontally aligned) frame-by-frame
+    # using the same public RimRegion/config helpers the real state machine
+    # already uses. Runs of such "candidate" frames are grouped into episodes
+    # (allowing gaps, since detections are sparse); an episode with enough
+    # candidate frames to plausibly be a real attempt, but with no ARM
+    # transition inside it, is flagged as a likely never-armed shot.
+    CANDIDATE_EPISODE_GAP = 20  # frames; groups sparse candidate detections into one episode
+    MIN_EPISODE_CANDIDATES = 2  # matches default descent_min_frames — the minimum a real arm needs
+    arm_frames: list[int] = []
+    candidate_frames: list[tuple[int, float, float]] = []  # (frame_idx, x, y)
+
     with FrameSource(config.camera.source) as source:
         while args.max_frames is None or total < args.max_frames:
             frame = source.read()
@@ -97,7 +121,19 @@ def main() -> None:
                     state_machine.rim = rim
 
             if state_machine is not None:
-                result = state_machine.update(obs, total - 1)
+                frame_idx = total - 1
+                if (
+                    obs is not None
+                    and rim is not None
+                    and rim.is_above(obs.y)
+                    and rim.is_aligned(obs.x, config.shot_logic.align_tolerance_ratio)
+                ):
+                    candidate_frames.append((frame_idx, obs.x, obs.y))
+
+                prev_state = state_machine.state
+                result = state_machine.update(obs, frame_idx)
+                if prev_state is ShotState.IDLE and state_machine.state is ShotState.ARMED:
+                    arm_frames.append(frame_idx)
                 if result is not None:
                     results.append(result)
 
@@ -158,6 +194,63 @@ def main() -> None:
     by_reason = Counter(r.reason for r in results)
     for reason, count in by_reason.most_common():
         print(f"  {reason.value if reason else '?':<26} {count}")
+
+    # --- Diagnostic-only extension (continued): never-armed episode report ---
+    # Group "candidate" frames (ball detected, above rim, aligned — the raw
+    # ingredient for arming) into episodes, allowing gaps up to
+    # CANDIDATE_EPISODE_GAP frames so sparse detections spanning one real
+    # attempt aren't fractured into noise. Flag any episode with at least
+    # MIN_EPISODE_CANDIDATES candidate frames that contains no IDLE->ARMED
+    # transition — a real shot attempt the state machine never even armed.
+    episodes: list[dict] = []
+    for frame_idx, x, y in candidate_frames:
+        if episodes and frame_idx - episodes[-1]["end"] <= CANDIDATE_EPISODE_GAP:
+            ep = episodes[-1]
+            ep["end"] = frame_idx
+            ep["frames"].append(frame_idx)
+        else:
+            episodes.append({"start": frame_idx, "end": frame_idx, "frames": [frame_idx]})
+
+    def _max_consecutive_run(frames: list[int]) -> int:
+        """Longest run of frame indices with no gap at all (diff==1) — this is
+        exactly what the real pre-arm streak needs consecutively; if this
+        never reaches descent_min_frames within an episode, that alone
+        explains why it never armed."""
+        best = run = 1
+        for a, b in zip(frames, frames[1:]):
+            run = run + 1 if b - a == 1 else 1
+            best = max(best, run)
+        return best
+
+    never_armed = []
+    for ep in episodes:
+        if len(ep["frames"]) < MIN_EPISODE_CANDIDATES:
+            continue
+        armed_inside = any(ep["start"] <= af <= ep["end"] for af in arm_frames)
+        if not armed_inside:
+            never_armed.append(ep)
+
+    print(f"\n{'='*70}\nNever-armed candidate shot attempts\n{'='*70}")
+    print(
+        f"(episodes of >= {MIN_EPISODE_CANDIDATES} 'ball above rim & aligned' frames, "
+        f"grouped with <= {CANDIDATE_EPISODE_GAP}f gaps, that never reached ShotState.ARMED)"
+    )
+    if not never_armed:
+        print("  none — every sufficiently-large candidate approach window armed.")
+    else:
+        for ep in never_armed:
+            run = _max_consecutive_run(ep["frames"])
+            print(
+                f"  frames {ep['start']:>5}-{ep['end']:<5} "
+                f"candidate_frames={len(ep['frames']):<3} "
+                f"longest_consecutive_run={run} "
+                f"(needs {config.shot_logic.descent_min_frames} consecutive to arm)"
+            )
+    print(
+        f"\nTotal candidate episodes: {len(episodes)}   "
+        f"Armed+resolved: {len(results)}   "
+        f"Flagged never-armed: {len(never_armed)}"
+    )
 
 
 if __name__ == "__main__":

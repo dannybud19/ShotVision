@@ -9,3 +9,4 @@ sample_clips/*
 *.avi
 !sample_clips/.gitkeep
 !sample_clips/SOURCES.md
+experiments/.cache/
