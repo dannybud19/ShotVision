@@ -1,10 +1,18 @@
 # Proposed `shot_logic/state_machine.py` patches — NOT applied
 
-**Both patches below are proposals only.** Neither has been applied to
+**All three patches below are proposals only.** None have been applied to
 `shotvision/shot_logic/state_machine.py`, `shotvision/config/settings.py`,
 `shotvision/config/default.json`, or `tests/test_state_machine.py`. Each
 requires explicit human confirmation before being applied to the real
 pipeline.
+
+Read in this order: **Patch 2 is the current recommendation** — it's the
+one validated against the actual root cause (see
+`docs/tracking-research.md`). Patch 1 (windowed arm-gate) was the
+original top idea, built and tested first, and found to rescue 0/5 real
+missing makes — kept here for the record, not as something to apply.
+Patch 3 (bounce-up gating) is an independent, low-risk bug fix that can
+be applied on its own regardless of what happens with 1/2.
 
 ---
 
@@ -217,7 +225,131 @@ def test_windowed_gate_disqualifying_frame_still_hard_resets():
 
 ---
 
-## Patch 2: Bounce-up gating fix
+## Patch 2: Arm from in-band detections too, not only above-rim ones
+
+### Why, and what the validation showed
+
+`docs/tracking-research.md`'s root-cause finding: for all 5 missing makes,
+ball detection is 85-100% (reliable) and `is_aligned` never fails, but
+`is_above` fails 100% of the time — every missing shot's first detected
+frame is already `IN-BAND`, descending smoothly to `below`. The ball is
+never once observed genuinely above the rim on this camera setup, so
+`_update_idle`'s hard requirement to see it above the rim before arming
+is checking for a precondition that essentially never occurs for a real
+make here.
+
+**Validated in `experiments/arm_gate_sweep.py`'s `simulate_inband_arms`**,
+run against real detector/tracker/rim-tracker output for all 3 clips: the
+qualifying test relaxed from "above-rim" to "above-rim OR in-band" (same
+consecutive-streak/jitter/alignment semantics as today, only the vertical
+zone changes) — **rescues 5 of 5 missing makes, with 0 spurious extra arms
+anywhere across all 3 clips.** Unlike Patch 1 (the windowed arm-gate,
+which rescued 0/5 regardless of parameters because there was no above-rim
+detection to ever bridge a gap to), this directly targets the confirmed
+mechanism and the validation numbers back it up cleanly.
+
+**Confidence: high**, on the same camera setup this was measured on. The
+sample-size caveat still applies in full — see `docs/tracking-research.md`
+Section 4 — this has only been validated on what is effectively one
+camera position.
+
+### `state_machine.py` change
+
+Single-line change to the qualifying condition in `_update_idle`:
+
+```python
+def _update_idle(self, obs: BallObservation | None, frame_idx: int) -> None:
+    if obs is None:
+        self._reset_prearm()
+        return None
+
+    x, y = obs.center
+    if not self.rim.is_below(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
+        if self._prearm_last_y is not None and y >= self._prearm_last_y - _DESCENT_JITTER_PX:
+            self._prearm_streak += 1
+        else:
+            self._prearm_streak = 1
+        self._prearm_last_y = y
+
+        if self._prearm_streak >= self.config.descent_min_frames:
+            self._reset_prearm()
+            self._reset_armed()
+            self.state = ShotState.ARMED
+            self._recent.append(obs)  # seed the trajectory for crossing tests
+            self._trace.append((frame_idx, obs.center))
+    else:
+        self._reset_prearm()
+    return None
+```
+
+Only `self.rim.is_above(y)` → `not self.rim.is_below(y)` changes (line
+197 in the current file). No new config field needed — `RimRegion.is_below`
+already exists (`rim.py`) and is reused as-is.
+
+### Why not combine with Patch 1 (windowed arm-gate)
+
+Patch 1 is now understood to target a different, non-occurring failure
+mode on this dataset (a partial streak broken by a gap — never observed;
+every missing shot had either 0 or 100% qualifying frames within its
+window depending on which zone counts). It remains a safe, low-risk,
+independent addition if a future camera setup exhibits genuine
+above-rim-detection gaps that this one didn't, but isn't needed to fix
+the problem actually measured here. Recommend applying Patch 3 alone
+first, re-measuring, and only adding Patch 1 later if a *new* failure
+mode (a genuine gap-broken streak) is observed on different footage.
+
+### New/updated tests for `tests/test_state_machine.py`
+
+The existing pre-arm tests should be reviewed for whether any implicitly
+depended on "in-band but not yet above-rim" correctly failing to arm
+(none currently appear to, based on the test names, but this should be
+confirmed at apply-time, not assumed). New coverage:
+
+```python
+def test_inband_detection_arms_without_ever_being_seen_above_rim():
+    # Regression test for the actual measured failure mode: a ball whose
+    # first-ever detection is already in-band (never observed above the
+    # rim at all) must still be able to arm, given enough consecutive
+    # in-band+aligned+descending frames. This is the exact shape of all 5
+    # real missing makes in the ground-truth clips (see
+    # docs/tracking-research.md).
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    # rim: outer y 50..70 (see _rim() helper) -> in-band is 50 <= y <= 70
+    positions = [(150, 55), (150, 60)]
+    _feed(sm, positions)
+    assert sm.state is ShotState.ARMED
+
+
+def test_inband_arming_still_requires_alignment():
+    # Loosening the vertical test must not loosen the horizontal one -
+    # an in-band but misaligned detection (x far from rim center) must
+    # still fail to arm, same as today's above-rim behavior.
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    positions = [(400, 55), (400, 60)]
+    results = _feed(sm, positions)
+    assert sm.state is ShotState.IDLE
+    assert results == []
+
+
+def test_below_rim_detection_still_does_not_arm():
+    # The fix relaxes above-rim to above-OR-in-band, not to "anywhere" -
+    # a detection already below the rim must still fail to arm, since
+    # by that point a real shot attempt would already be resolving
+    # through _update_armed, not still in pre-arm.
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    positions = [(150, 90), (150, 95)]  # below outer_bottom=70
+    results = _feed(sm, positions)
+    assert sm.state is ShotState.IDLE
+    assert results == []
+```
+
+(Exact rim bounds/coordinates above assume this file's existing `_rim()`
+test helper — verify against its actual values at apply-time rather than
+trusting these numbers blindly.)
+
+---
+
+## Patch 3: Bounce-up gating fix
 
 **Status: verified-by-code-read, not measured-as-occurring-in-this-dataset.**
 Zero instances of `MISS_BOUNCE_UP` occurred anywhere in the 3 ground-truth

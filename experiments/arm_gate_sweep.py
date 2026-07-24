@@ -332,6 +332,49 @@ def simulate_baseline_arms(data: ClipData) -> list[int]:
 
 
 # ---------------------------------------------------------------------------
+# Step 4a-2: in-band pre-arm simulation — same consecutive-streak semantics
+# as baseline, but the vertical qualifying test is relaxed from "strictly
+# above the rim" to "above OR in-band" (i.e. anywhere but below). Isolates
+# the effect of relaxing WHICH zone counts, kept separate from the windowed
+# (gap-tolerance) experiment above so the two changes aren't conflated.
+# ---------------------------------------------------------------------------
+
+
+def simulate_inband_arms(data: ClipData) -> list[int]:
+    """Same as simulate_baseline_arms, except the per-frame qualifying test
+    uses `not rim.is_below(y)` (above-rim OR in-band) instead of
+    `rim.is_above(y)` (above-rim only). Consecutiveness/jitter/alignment
+    semantics are otherwise identical to baseline, deliberately, to isolate
+    this one variable."""
+    cfg = data.config
+    streak = 0
+    last_y: float | None = None
+    arms: list[int] = []
+    for rec in data.frames:
+        obs, rim = rec.obs, rec.rim
+        if obs is None or rim is None:
+            streak = 0
+            last_y = None
+        else:
+            x, y = obs.x, obs.y
+            if not rim.is_below(y) and rim.is_aligned(x, cfg.align_tolerance_ratio):
+                if last_y is not None and y >= last_y - _DESCENT_JITTER_PX:
+                    streak += 1
+                else:
+                    streak = 1
+                last_y = y
+            else:
+                streak = 0
+                last_y = None
+
+        if streak >= cfg.descent_min_frames:
+            arms.append(rec.frame_idx)
+            streak = 0
+            last_y = None
+    return arms
+
+
+# ---------------------------------------------------------------------------
 # Step 4b: windowed pre-arm simulation.
 # ---------------------------------------------------------------------------
 
@@ -406,6 +449,7 @@ class ClipReport:
     resolved_windows: list[ShotWindow]
     missing_windows: list[ShotWindow]
     baseline_arms: list[int]
+    inband_arms: list[int]
 
 
 def build_clip_report(source: str, force_recollect: bool = False) -> ClipReport:
@@ -418,8 +462,10 @@ def build_clip_report(source: str, force_recollect: bool = False) -> ClipReport:
     expected_missing = (n_makes + n_misses) - len(resolved)
     missing = locate_missing_shot_windows(data, resolved, expected_missing)
     baseline_arms = simulate_baseline_arms(data)
+    inband_arms = simulate_inband_arms(data)
     return ClipReport(
         source=source,
+        inband_arms=inband_arms,
         resolved_windows=resolved,
         missing_windows=missing,
         baseline_arms=baseline_arms,
@@ -551,6 +597,28 @@ def run_sweep(reports: list[ClipReport], clip_data: dict[str, ClipData], grid: l
             "  ** WARNING: baseline replication did not reproduce the known 0/5 "
             "result. Do not trust the windowed sweep below until this is fixed. **"
         )
+
+    print(f"\n{'=' * 78}\nIn-band arm variant (arm from above-rim OR in-band, not below)\n{'=' * 78}")
+    print(
+        "(same consecutive-streak semantics as baseline — only the vertical\n"
+        " qualifying test changes, from 'strictly above the rim' to 'above OR\n"
+        " in-band'. Isolates the fix identified by the detection breakdown above.)"
+    )
+    rescued_inband = 0
+    for source, w in all_missing:
+        rep = next(r for r in reports if r.source == source)
+        hit = _arms_in_window(rep.inband_arms, w)
+        rescued_inband += hit
+        print(f"  {Path(source).name:38s} {w.label:55s} in-band arms inside window: {hit}")
+    print(f"In-band rescued: {rescued_inband}/{n_missing_total}")
+
+    spurious_inband_total = 0
+    for rep in reports:
+        known = rep.resolved_windows + rep.missing_windows
+        spurious = _spurious_arms(rep.inband_arms, known)
+        spurious_inband_total += spurious
+        print(f"  {Path(rep.source).name:38s} spurious extra in-band arms (outside any known shot window): {spurious}")
+    print(f"In-band variant total spurious extra arms across all 3 clips: {spurious_inband_total}")
 
     print(f"\n{'=' * 78}\nWindowed sweep\n{'=' * 78}")
     header = f"{'N':>3} {'W':>4} {'rescued':>10} {'spurious_extra_arms':>22}  per-clip spurious"
