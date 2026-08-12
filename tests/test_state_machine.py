@@ -84,15 +84,20 @@ def test_rim_out_exits_inner_bounds_at_rim_height():
 
 
 def test_bounces_upward_after_reaching_rim_height():
+    # Post bounce-up-gating-fix: a bounce that happens AFTER a valid
+    # through-crossing (_passed_through=True) no longer overturns the shot -
+    # it now resolves MAKE once the whole ball clears the rim, instead of
+    # the pre-fix MISS.
     sm = ShotStateMachine(_rim(), _config())
     positions = [
         (150, 10), (150, 20),  # arm
-        (150, 60),              # reaches band, inside inner bounds
-        (150, 30),              # bounces back up above the rim (outer_top=50)
+        (150, 60),              # reaches band, inside inner bounds -> passed_through=True
+        (150, 30),              # bounces back above the rim - no longer resolves MISS here
+        (150, 80),               # whole ball below rim -> MAKE (passed_through survived the bounce)
     ]
     results = _feed(sm, positions)
     assert len(results) == 1
-    assert results[0].outcome is ShotOutcome.MISS
+    assert results[0].outcome is ShotOutcome.MAKE
 
 
 def test_reaches_below_rim_without_ever_being_inside_inner_bounds():
@@ -176,6 +181,40 @@ def test_resets_to_idle_ready_for_next_shot_after_resolving():
     assert results[0].outcome is ShotOutcome.MAKE
 
 
+def test_inband_detection_arms_without_ever_being_seen_above_rim():
+    # Regression test for the measured missing-makes failure mode: a ball
+    # whose first-ever detection is already in-band (never observed above
+    # the rim at all) must still be able to arm, given enough consecutive
+    # in-band+aligned+descending frames. This is the exact shape of all 5
+    # real missing makes in the ground-truth clips (docs/tracking-research.md).
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    # rim: outer y 50..70 -> in-band is 50 <= y <= 70
+    positions = [(150, 55), (150, 60)]
+    _feed(sm, positions)
+    assert sm.state is ShotState.ARMED
+
+
+def test_inband_arming_still_requires_alignment():
+    # Loosening the vertical test must not loosen the horizontal one - an
+    # in-band but misaligned detection (x far from rim center) must still
+    # fail to arm, same as today's above-rim behavior.
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    results = _feed(sm, [(400, 55), (400, 60)])
+    assert sm.state is ShotState.IDLE
+    assert results == []
+
+
+def test_below_rim_detection_still_does_not_arm():
+    # The fix relaxes above-rim to above-OR-in-band, not to "anywhere" - a
+    # detection already below the rim must still fail to arm, since by that
+    # point a real shot attempt would already be resolving through
+    # _update_armed, not still in pre-arm.
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
+    results = _feed(sm, [(150, 90), (150, 95)])  # below outer_bottom=70
+    assert sm.state is ShotState.IDLE
+    assert results == []
+
+
 # --- diagnostic reason tagging (does not change outcomes) ---
 
 
@@ -202,10 +241,15 @@ def test_reason_below_without_inner():
     assert results[0].entered_inner is False
 
 
-def test_reason_bounce_up():
+def test_reason_make_confirmed_after_bounce_post_passthrough():
+    # Post bounce-up-gating-fix, MISS_BOUNCE_UP can no longer be reached by
+    # any real trajectory: _reached_rim only survives across frames via the
+    # inner-bounds crossing branch, which sets _passed_through=True in the
+    # same statement block. See experiments/proposed_state_machine_patches.md
+    # Patch 3 for the traced control-flow argument.
     sm = ShotStateMachine(_rim(), _config())
-    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 30)])
-    assert results[0].reason is ResolutionReason.MISS_BOUNCE_UP
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 30), (150, 80)])
+    assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
 
 
 def test_reason_occlusion_gap():

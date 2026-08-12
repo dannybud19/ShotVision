@@ -23,8 +23,12 @@ when preceded by a consistent approach; only a sustained drift across the
 window does.
 
 Flow (per ball observation fed in frame by frame):
-  IDLE  -> ARMED : ball above the rim, roughly aligned horizontally, and
-                    descending for `descent_min_frames` in a row.
+  IDLE  -> ARMED : ball above the rim or already in-band (not yet below it),
+                    roughly aligned horizontally, and descending for
+                    `descent_min_frames` in a row. The in-band allowance
+                    exists because real shots on measured footage are often
+                    first detected already descending at rim height, never
+                    genuinely above the rim first.
   ARMED -> MAKE  : the ball's path crosses the rim line within the inner
                     horizontal gate, and the *whole ball* then reaches below
                     the outlined rim (bbox top edge below `outer_bottom`)
@@ -194,7 +198,7 @@ class ShotStateMachine:
             return None
 
         x, y = obs.center
-        if self.rim.is_above(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
+        if not self.rim.is_below(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
             if self._prearm_last_y is not None and y >= self._prearm_last_y - _DESCENT_JITTER_PX:
                 self._prearm_streak += 1
             else:
@@ -247,7 +251,7 @@ class ShotStateMachine:
 
         # Bounced back up above the rim after having reached it — rim-out /
         # airball off the back iron.
-        if self._reached_rim and rim.is_above(y):
+        if self._reached_rim and not self._passed_through and rim.is_above(y):
             return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BOUNCE_UP)
 
         # Whole ball below the outlined rim (bbox top edge past the bottom) —
