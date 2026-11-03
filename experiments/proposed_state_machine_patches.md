@@ -1,3 +1,5 @@
+> **Superseded 2026-11-03.** The root cause of the missing makes was ByteTrack (`model.track()`) dropping the fast-moving ball above the rim, not the arming or crossing logic analysed here. See the 2026-11-03 entry in `docs/PROJECT_LOG.md`. Kept for the record.
+
 # Proposed `shot_logic/state_machine.py` patches — NOT applied
 
 **All three patches below are proposals only.** None have been applied to

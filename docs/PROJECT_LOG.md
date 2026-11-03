@@ -52,7 +52,22 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **New `scripts/evaluate.py`:** scores the pipeline against `sample_clips/labels.json` (per-shot outcomes, false makes, spurious shots, and ball-coverage smoothness on makes), with cached detections so logic changes replay in seconds. **New `scripts/render_overlay.py`:** headless HUD video for visual review.
 - **Result:** chonyy clips (labeled from viewed frames) score 11/11 shots correct, 0 false makes, make-window ball coverage 90-96% with gaps of at most 2 frames.
 - **External research** (11 open-source shot trackers, read in code): avishah3, whose checkpoint we use, runs plain per-frame detection with no tracker; abdullahtarek deliberately avoids ByteTrack for the ball. JadenS180 (MIT) reports 28/29 shots with 0 false makes using a ~0.25 s make-confirmation hold, size and steepness vetoes that can only turn makes into misses, and a stationary-false-positive filter. These are queued as loop candidates.
-- **Next:** 9 more sample clips (68 candidate shot windows) are awaiting user labels on a labeling page; then an evaluate → fix loop until every labeled clip is exact with 0 false makes.
+- **Labels:** the user labeled 68 candidate shot windows across 8 more clips on a labeling page (59 makes, 4 misses, 5 not-a-shot; kyle_validation_video dropped at the user's request). Two video_test_5 cards were one shot and were merged. The new tracker found 2 lf_back makes that had no card; both were confirmed by frame review and added, marked as such. Total: 11 clips, 75 shots (65 makes, 10 misses).
+- **Evaluate → fix loop** (agreed stop rule: every clip exact, 0 false makes, smoothness passing; cap ~8 iterations). Every iteration kept 0 false makes:
+
+  | Iter | Change | Correct |
+  |---|---|---|
+  | 0 | baseline (ByteTrack fix) | 52/75 |
+  | 1 | velocity-gated association, stationary-object filter (a round "1" sign was detected as a ball 219 times), guarded track switching | 56/75 |
+  | 2 | no track switching during the 2-4 frame blur gap at the rim (a shooter's head, conf up to 0.69, was taking over) | 58/75 |
+  | 3-4 | gate sized by the followed ball; 24-frame occlusion grace when last seen at the hoop (ball hidden in the net 11-19 frames); arming survives one missed frame; align tolerance 0.6 → 1.0 | 66/75 |
+  | 5 | weak (0.03-0.15) boxes continue a followed ball through the net; never arm/cross/resolve | 66/75 (make coverage 70% → 75%) |
+  | 6 | track identity (a shot only scores the ball it armed on); strength = best recent conf; velocity over gaps up to 8 frames; gate around last position too | 67/75 |
+  | 7 | scoring line at 0.4 of the hoop box (box spans rim + net; midline is mid-net) | **68/75** |
+
+  A subagent measured detection variants on the 12 hardest windows: imgsz 1280 and a hoop-ROI crop each *added* false makes; low conf helped only as continuation.
+- **Stopped at iteration 7, stop rule not met.** 5/11 clips pass outright. Of the 7 remaining failures, 6 are makes the detector cannot see (dark ball motion-blurred over the backboard or below the net, ball out of frame, a huge blurred ball on kyle_test_video) at any setting tried. The 7th (lf_shot_detection f600) would need a more make-favourable rule across a 14-frame gap, which 10 labeled misses can't show is safe. Smoothness: average make-window coverage 76%, average longest gap 5.7 frames, but 23 of 65 make windows still fail the strict check (gap ≤ 6 frames, coverage ≥ 60%), almost all because of the net/blur gap.
+- **Next:** (1) film and label misses from the target camera (rim-outs, in-and-outs, airballs) so false-make safety is actually measured; (2) fine-tune the detector on motion-blurred ball frames from that camera (scripts/finetune_roboflow.py); (3) re-run scripts/evaluate.py after each.
 
 ---
 
@@ -60,7 +75,8 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 
 - Python 3.12
 - `ultralytics` (YOLO) for ball + hoop detection
-- Per-frame YOLO detection + nearest-neighbour ball association (ByteTrack removed 2026-11-03)
+- Per-frame YOLO detection + gated nearest-neighbour ball association (ByteTrack removed 2026-11-03)
+- `scripts/evaluate.py` + `sample_clips/labels.json` as the regression scoreboard
 - OpenCV for video I/O and frame processing
 - PyTorch on MPS (Apple Silicon) for inference
 - `certifi` (SSL workaround, needed for model/weight downloads on macOS)

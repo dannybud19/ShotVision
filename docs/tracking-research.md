@@ -1,3 +1,5 @@
+> **Superseded 2026-11-03.** The root cause of the missing makes was ByteTrack (`model.track()`) dropping the fast-moving ball above the rim, not the arming or crossing logic analysed here. See the 2026-11-03 entry in `docs/PROJECT_LOG.md`. Kept for the record.
+
 # Tracking Research: Why Real Makes Are Being Missed
 
 ## Section 1: Measured diagnosis

@@ -6,7 +6,7 @@ download fails.
 from __future__ import annotations
 
 import logging
-import shutil
+import hashlib
 import ssl
 import urllib.request
 from pathlib import Path
@@ -31,14 +31,31 @@ DEFAULT_CHECKPOINT_URL = (
     "https://raw.githubusercontent.com/avishah3/"
     "AI-Basketball-Shot-Detection-Tracker/master/best.pt"
 )
+# SHA256 of the checkpoint at DEFAULT_CHECKPOINT_URL as first downloaded and
+# validated (2026-11-03). A .pt file is a pickle, and loading one can run
+# code, so a download that doesn't match is discarded instead of loaded.
+# Only downloads are checked: your own weights at model.weights load as-is.
+DEFAULT_CHECKPOINT_SHA256 = "72c1e7c64cc6054db3dc5429385630f81c2136f5935fed546e6887bfe158d306"
 
 
-def _download(url: str, dest: Path) -> None:
+class ChecksumMismatch(Exception):
+    pass
+
+
+def _download(url: str, dest: Path, sha256: str | None = DEFAULT_CHECKPOINT_SHA256) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp_dest = dest.with_suffix(dest.suffix + ".part")
+    digest = hashlib.sha256()
     with urllib.request.urlopen(url, context=_SSL_CONTEXT, timeout=60) as response:
         with open(tmp_dest, "wb") as f:
-            shutil.copyfileobj(response, f)
+            while chunk := response.read(1 << 20):
+                digest.update(chunk)
+                f.write(chunk)
+    if sha256 is not None and digest.hexdigest() != sha256:
+        tmp_dest.unlink(missing_ok=True)
+        raise ChecksumMismatch(
+            f"downloaded checkpoint SHA256 {digest.hexdigest()} != expected {sha256}"
+        )
     tmp_dest.rename(dest)
 
 
@@ -59,9 +76,8 @@ def resolve_weights(model_config: ModelConfig) -> str:
     except Exception as exc:
         logger.warning(
             "Could not download default basketball checkpoint (%s). Falling "
-            "back to COCO checkpoint '%s' — ball detection near the floor "
-            "will be less reliable, and hoop detection will rely solely on "
-            "manual rim calibration.",
+            "back to COCO checkpoint '%s' — it has no hoop class, so the rim "
+            "can't be located and shot logic won't run.",
             exc,
             model_config.fallback_weights,
         )
