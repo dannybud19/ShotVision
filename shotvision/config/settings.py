@@ -63,7 +63,9 @@ class TrackerConfig:
     # recent point), within max_jump_ball_widths * frames_elapsed widths of
     # the last position.
     gate_base_widths: float = 1.5
-    gate_per_frame_widths: float = 1.0
+    # 0.5/frame: measured, 1.0/frame let a shooter's head 153px from the
+    # prediction (4 frames into a blur gap at the rim) into the gate.
+    gate_per_frame_widths: float = 0.5
     max_jump_ball_widths: float = 3.0
     # After this many frames without an accepted detection the followed ball
     # is dropped and the most confident detection is (re)acquired.
@@ -95,11 +97,19 @@ class ShotLogicConfig:
     inner_bound_shrink: float = 0.15
     # How far outside the rim's horizontal span (as a ratio of rim width) the
     # ball may still be considered "aligned" while approaching from above.
-    align_tolerance_ratio: float = 0.6
+    # 1.0 (was 0.6): measured, real makes are often last seen above the rim
+    # just outside the 0.6 span; arming looseness can't create a make by
+    # itself (scoring still needs an inner-gate crossing).
+    align_tolerance_ratio: float = 1.0
     descent_min_frames: int = 2
+    # Missing-detection frames the pre-arm descent streak survives.
+    prearm_max_missed_frames: int = 1
     # Consecutive missing-detection frames tolerated before a shot is
-    # considered lost to occlusion rather than failed (hand at release, net).
+    # considered lost to occlusion rather than failed (hand at release).
     occlusion_grace_frames: int = 12
+    # The same, when the ball was last seen at the hoop: a ball in the net is
+    # hidden for 11-19 frames on measured footage.
+    rim_occlusion_grace_frames: int = 24
     # Frames since a shot armed before it's forced to resolve as a MISS.
     shot_timeout_frames: int = 90
     trajectory_buffer_len: int = 60

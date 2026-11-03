@@ -163,6 +163,7 @@ class ShotStateMachine:
     def _reset_prearm(self) -> None:
         self._prearm_streak = 0
         self._prearm_last_y: float | None = None
+        self._prearm_missed = 0
 
     def _reset_armed(self) -> None:
         self._passed_through = False
@@ -191,9 +192,15 @@ class ShotStateMachine:
 
     def _update_idle(self, obs: BallObservation | None, frame_idx: int) -> None:
         if obs is None:
-            self._reset_prearm()
+            # A single motion-blurred frame mid-descent shouldn't zero the
+            # streak (measured: it blocked arming on real makes); a longer
+            # gap still does.
+            self._prearm_missed += 1
+            if self._prearm_missed > self.config.prearm_max_missed_frames:
+                self._reset_prearm()
             return None
 
+        self._prearm_missed = 0
         x, y = obs.center
         if self.rim.is_above(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
             if self._prearm_last_y is not None and y >= self._prearm_last_y - _DESCENT_JITTER_PX:
@@ -212,13 +219,26 @@ class ShotStateMachine:
             self._reset_prearm()
         return None
 
+    def _occlusion_grace(self) -> int:
+        """Frames of missing detections tolerated before giving up. Longer
+        when the ball was last seen at the hoop: a ball dropping through the
+        net is hidden (or blurred) for 11-19 frames on measured footage,
+        longer than the general grace that covers e.g. a hand at release."""
+        last = self._recent[-1] if self._recent else None
+        if last is not None:
+            rim = self.rim
+            rim_h = rim.outer_bottom - rim.outer_top
+            if abs(last.x - rim.center_x) <= rim.outer_width and last.y >= rim.outer_top - rim_h:
+                return self.config.rim_occlusion_grace_frames
+        return self.config.occlusion_grace_frames
+
     def _update_armed(self, obs: BallObservation | None, frame_idx: int) -> ShotResult | None:
         self._frames_in_state += 1
         self._trace.append((frame_idx, obs.center if obs is not None else None))
 
         if obs is None:
             self._frames_since_detection += 1
-            if self._frames_since_detection > self.config.occlusion_grace_frames:
+            if self._frames_since_detection > self._occlusion_grace():
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_OCCLUSION_GAP)
             if self._frames_in_state > self.config.shot_timeout_frames:
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)

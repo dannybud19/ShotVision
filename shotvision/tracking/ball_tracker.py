@@ -48,6 +48,7 @@ class TrajectoryPoint:
     x: float
     y: float
     conf: float
+    width: float = 0.0  # bbox width; sizes the association gate
 
 
 def _width(d: Detection) -> float:
@@ -143,8 +144,12 @@ class BallTracker:
             anchor = (last.x, last.y)
             gate_widths = self.cfg.max_jump_ball_widths * elapsed
 
+        # Size the gate by the followed ball, not the candidate: a false
+        # positive (a head) is often bigger than the ball and would widen its
+        # own gate.
+        ball_width = last.width or min(_width(d) for d in candidates)
         nearest = min(candidates, key=lambda d: math.dist(d.center, anchor))
-        if math.dist(nearest.center, anchor) <= gate_widths * _width(nearest):
+        if math.dist(nearest.center, anchor) <= gate_widths * ball_width:
             return nearest
 
         # Nothing plausible near the followed ball. Switch only to a confident
@@ -177,7 +182,7 @@ class BallTracker:
             return  # implausible jump: treat as unobserved
 
         x, y = chosen.center
-        self.trajectory.append(TrajectoryPoint(self.frame_idx, x, y, chosen.conf))
+        self.trajectory.append(TrajectoryPoint(self.frame_idx, x, y, chosen.conf, _width(chosen)))
         self.current_frame_ball_pos = (x, y)
         self.current_frame_ball_obs = BallObservation.from_bbox(chosen.bbox)
 

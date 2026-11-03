@@ -13,7 +13,7 @@
   },
   "tracker": {
     "gate_base_widths": 1.5,
-    "gate_per_frame_widths": 1.0,
+    "gate_per_frame_widths": 0.5,
     "max_jump_ball_widths": 3.0,
     "max_gap_frames": 15,
     "switch_strong_conf": 0.5,
@@ -26,9 +26,11 @@
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,
-    "align_tolerance_ratio": 0.6,
+    "align_tolerance_ratio": 1.0,
     "descent_min_frames": 2,
+    "prearm_max_missed_frames": 1,
     "occlusion_grace_frames": 12,
+    "rim_occlusion_grace_frames": 24,
     "shot_timeout_frames": 90,
     "trajectory_buffer_len": 60,
     "rim_ema_alpha": 0.25,
