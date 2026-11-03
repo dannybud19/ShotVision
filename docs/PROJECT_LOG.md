@@ -25,7 +25,6 @@ cd4c8e1 Wire RimTracker into main.py, remove manual calibration entirely
 b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 ```
 
-*(Note: full `git log --oneline -20` output was not retrievable this session due to a sandbox permission restriction on shell access to the repo directory; the above reflects the most recent commits visible in this session's git status snapshot. Update this list with the fuller history next time shell access is available.)*
 
 ### 2026-07-24 — Missed-makes investigation: measurement + external research
 
@@ -44,13 +43,24 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 
 **Addition, same day — arm-gate sweep completed:** `experiments/arm_gate_sweep.py` ran the real detection/tracking/rim-tracking pipeline over the 3 ground-truth clips, replicated today's `_update_idle` pre-arm logic locally (validated: reproduces the known 0/5 rescued), and swept a windowed (gap-tolerant) variant across N∈{2,3} × W∈{4,6,8,10,15}. Result: **0 of 5 missing makes rescued at every (N, W) tested**, with **0 spurious extra arm events** anywhere in the 3 clips at every setting. This was cross-checked (not a sweep bug) two ways: the baseline replication correctly reproduces 0/5, and a direct count of raw qualifying frames (detected + above-rim + aligned, before descent/consecutiveness) inside each of the 5 best-effort missing-shot windows came back exactly 0 in all 5 cases — a fresh, independent re-run of `scripts/diagnose_shots.py`'s never-armed-episode detector against all 3 clips this session also found 0 episodes beyond the 6 already-resolved shots in every clip, confirming these 5 misses have literally zero above-rim+aligned detections anywhere, not merely a broken streak. **Conclusion: the windowed arm-gate change (research doc's top recommendation) is still low-risk and worth keeping on the roadmap, but it would NOT by itself have rescued any of the 5 measured missing makes — it needs to be paired with either a looser above-rim/aligned test or a real detection-sparsity fix (recommendation #2, TrackNet-style) to address what was actually measured.** Wrote up both this windowed-gate patch and the previously-designed (and, this session, code-flow-verified) bounce-up gating fix as unapplied, ready-to-review proposals in `experiments/proposed_state_machine_patches.md`, including a discovery that the bounce-up fix makes `ResolutionReason.MISS_BOUNCE_UP` structurally unreachable going forward (traced through `_update_armed`'s control flow, not just asserted). Added `tests/test_arm_gate_sweep.py` (3 tests, passing) covering the sweep's own windowed-gate simulation in isolation. Full suite: 98/98 passing (95 pre-existing + 3 new). No files under `shotvision/` were modified — `experiments/arm_gate_sweep.py`, `experiments/proposed_state_machine_patches.md`, and `tests/test_arm_gate_sweep.py` are new files only.
 
+### 2026-11-03 — Root cause found: ByteTrack was dropping the ball; tracker replaced, evaluation harness added
+
+- **Root cause of every "missing make":** `BallTracker` used `model.track()` (ByteTrack). Raw `predict()` detects the ball above the rim at conf 0.79-0.88 for ~12 straight frames per make, but ByteTrack's IoU association never confirms a track for a ball moving ~12-15 px/frame on a ~23 px box, so `track()` output nothing until the ball slowed down in the net. The "~20% detection rate", "makes are never seen above the rim", the arming failure and the 2026-08-12 scoring bug were all downstream of this.
+- **Fix (branch `fix/ball-tracking`):** `BallTracker` now runs `predict()` and links the ball by nearest neighbour, with a jump gate scaled by ball width × frames elapsed (`tracker.max_jump_ball_widths`, `tracker.max_gap_frames`). Ball coverage on the chonyy clips went from ~20% to ~75% of frames.
+- **Reverted in-band arming (Patch 2):** with the ball visible above the rim, the original stricter above-rim arming scores identically. Removed the unreachable `MISS_BOUNCE_UP` exit.
+- **Measured:** the hoop box from this checkpoint spans rim + net (y 174-212 on the chonyy camera, rim ring at ~175-182), so `rim.rim_y` sits mid-net. Not currently causing errors; candidate cleanup.
+- **New `scripts/evaluate.py`:** scores the pipeline against `sample_clips/labels.json` (per-shot outcomes, false makes, spurious shots, and ball-coverage smoothness on makes), with cached detections so logic changes replay in seconds. **New `scripts/render_overlay.py`:** headless HUD video for visual review.
+- **Result:** chonyy clips (labeled from viewed frames) score 11/11 shots correct, 0 false makes, make-window ball coverage 90-96% with gaps of at most 2 frames.
+- **External research** (11 open-source shot trackers, read in code): avishah3, whose checkpoint we use, runs plain per-frame detection with no tracker; abdullahtarek deliberately avoids ByteTrack for the ball. JadenS180 (MIT) reports 28/29 shots with 0 false makes using a ~0.25 s make-confirmation hold, size and steepness vetoes that can only turn makes into misses, and a stationary-false-positive filter. These are queued as loop candidates.
+- **Next:** 9 more sample clips (68 candidate shot windows) are awaiting user labels on a labeling page; then an evaluate → fix loop until every labeled clip is exact with 0 false makes.
+
 ---
 
 ## Tools used
 
 - Python 3.12
 - `ultralytics` (YOLO) for ball + hoop detection
-- ByteTrack (`bytetrack.yaml`) for multi-object tracking
+- Per-frame YOLO detection + nearest-neighbour ball association (ByteTrack removed 2026-11-03)
 - OpenCV for video I/O and frame processing
 - PyTorch on MPS (Apple Silicon) for inference
 - `certifi` (SSL workaround, needed for model/weight downloads on macOS)
