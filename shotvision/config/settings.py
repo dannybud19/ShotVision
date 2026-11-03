@@ -53,15 +53,39 @@ class ModelConfig:
 
 @dataclass
 class TrackerConfig:
-    # Nearest-neighbour ball association (tracking/ball_tracker.py). A new
-    # detection links to the followed ball only if it moved at most
-    # max_jump_ball_widths ball-widths per frame elapsed since the ball was
-    # last confirmed; after max_gap_frames without a confirmation the ball is
-    # re-acquired from the most confident detection. (ByteTrack was dropped:
-    # its IoU association can't follow a ball moving ~half its own width per
-    # frame — see ball_tracker.py.)
+    # Ball association (tracking/ball_tracker.py). ByteTrack was dropped: its
+    # IoU association can't follow a ball moving ~half its own width per
+    # frame. See ball_tracker.py for the full rules.
+    #
+    # With a velocity estimate, a detection must fall within
+    # (gate_base_widths + gate_per_frame_widths * frames_elapsed) ball widths
+    # of the position predicted from that velocity. Without one (a single
+    # recent point), within max_jump_ball_widths * frames_elapsed widths of
+    # the last position.
+    gate_base_widths: float = 1.5
+    gate_per_frame_widths: float = 1.0
     max_jump_ball_widths: float = 3.0
+    # After this many frames without an accepted detection the followed ball
+    # is dropped and the most confident detection is (re)acquired.
     max_gap_frames: int = 15
+    # Switch to a detection outside the gate only if it is at least this
+    # confident AND the followed ball was itself weaker than switch_weak_conf
+    # (e.g. the tracker latched onto a player's head, conf ~0.2, while the
+    # real ball, conf ~0.8, flies) or has been unseen for switch_stale_frames.
+    # The stale wait must outlast the 2-4 frame motion-blur gap as the ball
+    # drops through the rim: measured, a shooter's head (conf up to 0.69)
+    # otherwise hijacks the track there and fakes a miss.
+    switch_strong_conf: float = 0.5
+    switch_weak_conf: float = 0.3
+    switch_stale_frames: int = 8
+    # Stationary false positives (a round sign, a ball on the floor): ignore
+    # a detection whose spot (within stationary_radius_widths ball widths)
+    # produced >= stationary_min_hits detections spread over at least
+    # stationary_min_span_frames within the last stationary_window_frames.
+    stationary_window_frames: int = 180
+    stationary_min_span_frames: int = 90
+    stationary_min_hits: int = 25
+    stationary_radius_widths: float = 0.6
 
 
 @dataclass

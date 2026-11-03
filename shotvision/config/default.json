@@ -12,8 +12,17 @@
     "rim_conf": 0.6
   },
   "tracker": {
+    "gate_base_widths": 1.5,
+    "gate_per_frame_widths": 1.0,
     "max_jump_ball_widths": 3.0,
-    "max_gap_frames": 15
+    "max_gap_frames": 15,
+    "switch_strong_conf": 0.5,
+    "switch_weak_conf": 0.3,
+    "switch_stale_frames": 8,
+    "stationary_window_frames": 180,
+    "stationary_min_span_frames": 90,
+    "stationary_min_hits": 25,
+    "stationary_radius_widths": 0.6
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,

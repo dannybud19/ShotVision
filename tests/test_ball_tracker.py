@@ -25,8 +25,8 @@ def _make_tracker(buffer_len=5, confirm_conf=0.15, max_jump_ball_widths=3.0, max
     tracker.current_frame_ball_pos = None
     tracker.current_frame_ball_obs = None
     tracker.detector = _FakeDetector(confirm_conf)
-    tracker.max_jump_ball_widths = max_jump_ball_widths
-    tracker.max_gap_frames = max_gap_frames
+    tracker.cfg = TrackerConfig(max_jump_ball_widths=max_jump_ball_widths, max_gap_frames=max_gap_frames)
+    tracker._candidate_history = deque()
     return tracker
 
 
