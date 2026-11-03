@@ -8,7 +8,7 @@ def test_load_config_defaults():
     assert cfg.model.device == "auto"
     assert cfg.model.conf == 0.15
     assert cfg.model.imgsz == 960
-    assert cfg.model.track_conf == 0.10
+    assert cfg.model.track_conf == 0.03
     assert cfg.model.track_conf < cfg.model.conf  # recovery floor stays below confirmation bar
     assert cfg.model.rim_conf == 0.60
     assert cfg.shot_logic.occlusion_grace_frames == 12

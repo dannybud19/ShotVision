@@ -1,4 +1,9 @@
-"""Rim geometry derived from 4 manually-clicked points around the rim.
+"""Rim geometry, built from the model's hoop detection box (see
+shot_logic/rim_tracker.py; `from_points` remains for tests and tools).
+
+Note: this checkpoint's hoop box spans the rim *and the net*, so the box's
+vertical midline (`rim_y`) sits mid-net. The state machine scores against
+its own line nearer the top of the box (ShotLogicConfig.scoring_line_fraction).
 
 Two bound sets: the outer box (used for above/at/below-rim tests) and an
 inner horizontal scoring gate, shrunk in from the outer box so a make must

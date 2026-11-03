@@ -1,4 +1,10 @@
-"""Arm-gate sweep: does a windowed (gap-tolerant) pre-arm test rescue the
+"""SUPERSEDED (2026-11-03): the "missing makes" this experiment chased were
+caused by ByteTrack dropping the fast-moving ball (see
+shotvision/tracking/ball_tracker.py and docs/PROJECT_LOG.md), not by the
+arming logic. Kept for the record; it still runs, but its conclusions were
+drawn from tracker-starved data. Use scripts/evaluate.py instead.
+
+Arm-gate sweep: does a windowed (gap-tolerant) pre-arm test rescue the
 missing makes, and at what false-positive cost?
 
 Context (see docs/tracking-research.md for the full writeup): real makes are

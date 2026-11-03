@@ -37,6 +37,11 @@ import time
 
 import cv2
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from shotvision.config.settings import load_config
 from shotvision.detection.detector import BALL, HOOP, Detector
 from shotvision.detection.device import log_device_choice, resolve_device

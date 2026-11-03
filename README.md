@@ -13,13 +13,17 @@ shotvision/
   config/       dataclass config, default.json
   capture/      FrameSource — video file / device / stream URL, one interface
   detection/    device auto-detect, checkpoint resolution, YOLO wrapper
-  tracking/     ByteTrack-based ball tracking + trajectory buffer
+  tracking/     per-frame detection + gated nearest-neighbour ball tracking
   shot_logic/   rim geometry, automatic rim tracking, make/miss state machine
   stats/        makes/misses/attempts/percentage + per-shot log
   overlay/      HUD: rim box, trajectory trail, counters
   main.py       wires the pipeline, keyboard loop
 scripts/
-  finetune_roboflow.py   fine-tuning follow-up (not run this session)
+  evaluate.py            scoreboard: score the pipeline against labeled clips
+  render_overlay.py      write the HUD overlay to an mp4 (watch the tracking)
+  diagnose_shots.py      per-shot trace of how each shot resolved
+  tune_detection.py      imgsz x conf detection sweep
+  finetune_roboflow.py   fine-tuning follow-up (not run yet)
 tests/          pytest suite, one file per module
 models/         downloaded checkpoints (gitignored)
 ```
@@ -136,6 +140,35 @@ hoop reading corrupts the scoring geometry itself, which is higher-stakes
 than a missed ball frame, and the gentle curve means little detection rate
 is sacrificed for that safety margin.
 
+## Ball tracking
+
+`shotvision.tracking.ball_tracker.BallTracker` runs plain per-frame detection
+(`model.predict()`) and links the ball across frames itself. It does **not** use
+ByteTrack (`model.track()`): ByteTrack links boxes by overlap and only outputs
+confirmed tracks, and a ball in flight moves about half its own width per frame,
+so ByteTrack never confirmed it and dropped the ball for its whole flight above
+the rim. That was the root cause of every "missing make" before 2026-11-03.
+
+Association rules (thresholds in the `tracker` config section):
+
+- **Gate around the predicted position.** The next detection must lie near
+  where the ball's recent velocity says it should be, or near its last
+  position (the net stops a ball abruptly). The gate is sized by the followed
+  ball's width and grows slowly with frames since it was last seen.
+- **Stationary objects are ignored.** A spot that keeps producing ball
+  detections for seconds (a round sign on the hoop pole, a ball on the floor)
+  is not the ball in play.
+- **Guarded switching.** The tracker jumps to a confident detection outside the
+  gate only if the followed ball has been weak recently or unseen for
+  `switch_stale_frames`. A shooter's dark hair is detected as a ball at up to
+  conf 0.69 on real footage and would otherwise take over while the real ball
+  blurs at the rim. Each switch starts a new track identity, and a shot only
+  scores the identity it started on.
+- **Weak continuation.** Boxes between `model.track_conf` (0.03) and
+  `model.conf` (0.15) may continue an already-followed ball near its predicted
+  path, e.g. the ball faintly visible through the net. They keep a shot alive
+  but never start, cross or resolve one.
+
 ## Rim tracking
 
 The rim is located **automatically** from the model's own hoop detections —
@@ -180,10 +213,13 @@ makes, rim-outs, upward bounces off the rim, occlusion within/beyond grace,
 net occlusion, timeouts, misaligned motion).
 
 Summary: a shot arms when the ball is seen above the rim, roughly aligned
-with it horizontally, and descending for a few consecutive frames. Scoring is
+with it horizontally (`align_tolerance_ratio`), and descending for
+`descent_min_frames` frames; one missed frame doesn't reset that count. Scoring is
 then **trajectory-crossing based**: we track the ball's path and test whether
-the *segment* between two consecutive observed positions crosses the rim's
-horizontal midline (`rim.rim_y`), and where. It resolves **MAKE** only if that
+the *segment* between two consecutive observed positions crosses the scoring
+line, and where. The model's hoop box spans the rim *and the net*, so the line
+sits `scoring_line_fraction` (0.4) of the way down the box, near the rim, not
+at the box's midline in the middle of the net. It resolves **MAKE** only if that
 crossing falls inside the rim's inner horizontal gate **and** the whole ball
 (its bounding-box top edge) then reaches below the outlined rim without
 bouncing back up. Every ambiguous case — crossing outside the inner gate
@@ -203,11 +239,44 @@ band; the crossing approach scores those makes correctly.)
 
 A brief gap in ball detection (hand at release, ball hidden in the net)
 doesn't fail a shot by itself — only a gap longer than
-`shot_logic.occlusion_grace_frames` does, and the crossing test spans such gaps.
+`shot_logic.occlusion_grace_frames` (12) does, or `rim_occlusion_grace_frames`
+(24) when the ball was last seen at the hoop, since a ball in the net is hidden
+for 11-19 frames on measured footage. The crossing test spans such gaps.
 It doesn't look at the net at all, so it behaves the same for netted and
 net-less rims.
 
+## Evaluating changes
+
+`sample_clips/labels.json` holds ground truth for 11 clips (75 shots: 65 makes,
+10 misses), and `scripts/evaluate.py` scores the whole pipeline against it:
+
+```bash
+python scripts/evaluate.py                    # all labeled clips; exit 0 only if all pass
+python scripts/evaluate.py -v --clips lf_back.mp4
+python scripts/evaluate.py --set shot_logic.scoring_line_fraction=0.3   # try a setting
+python scripts/render_overlay.py --clip lf_back.mp4   # sample_clips/_debug/lf_back.overlay.mp4
+```
+
+It reports correct shots, **false makes**, missed makes, unlabeled ("spurious")
+shots, and a smoothness check on each make (share of frames with the ball, and
+the longest gap). Detections are cached in `experiments/.cache/`, so changes to
+tracking or shot logic replay in seconds; changing `model.*` settings re-runs
+the model. Clips aren't committed: download them per `sample_clips/SOURCES.md`.
+
+Current score (2026-11-03): **68/75 shots correct, 0 false makes**. The 7
+misses are makes the detector can't see well enough, mostly heavy motion blur
+over the backboard or below the net. See `docs/PROJECT_LOG.md`.
+
 ## Known limitations
+
+**Motion blur.** The default checkpoint misses a dark, motion-blurred ball over
+the backboard or below the net, sometimes for 10+ frames, at any confidence
+or image size tried. Those makes go uncounted. A detector fine-tuned on blurred
+frames from your own camera is the fix (`scripts/finetune_roboflow.py`).
+
+**Few labeled misses.** The evaluation set has only 10 misses, so the
+false-make rate is weakly tested. Filming and labeling misses (rim-outs,
+airballs, in-and-outs) from your own camera is the most valuable next step.
 
 **Depth ambiguity.** A single fixed camera can't fully distinguish "ball
 passed through the rim" from "ball passed in front of/behind the rim" — a
@@ -223,13 +292,17 @@ YOLOv8 fine-tune (ball + hoop classes) pulled directly from
 [avishah3/AI-Basketball-Shot-Detection-Tracker](https://github.com/avishah3/AI-Basketball-Shot-Detection-Tracker)
 — no Roboflow account needed, but its license is unspecified upstream.
 Fine for local prototyping; **do not redistribute** without sourcing a
-properly-licensed model first. `scripts/finetune_roboflow.py` documents
+properly-licensed model first. Downloads are checked against a pinned SHA256
+(`model_registry.DEFAULT_CHECKPOINT_SHA256`), since a `.pt` file is a pickle
+and loading one can run code. Also note that `ultralytics` itself is
+**AGPL-3.0**, which matters if this project is ever distributed or offered
+as a network service. `scripts/finetune_roboflow.py` documents
 fine-tuning on a Roboflow dataset (many are CC BY 4.0) as the accuracy *and*
 licensing follow-up — also the path to a model tuned for your specific
-camera angle and ball, since the ball detection rate on a quick smoke test
-against a third-party clip was only ~11% of frames (the hoop, by contrast,
-was detected in ~99.8% of frames — ByteTrack and the occlusion-tolerant
-state machine are what make the sparser ball detections still usable).
+camera angle and ball. With per-frame detection the ball is found in roughly
+40-80% of frames on the sample clips (the hoop in ~99%), and the gaps are
+concentrated exactly where scoring happens: motion blur at the rim and the
+net hiding the ball.
 
 **No court mapping, pose, multi-player, or shot-quality analysis** — all
 explicitly out of scope for this phase; the module boundaries

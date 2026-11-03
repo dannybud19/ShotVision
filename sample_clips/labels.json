@@ -1,0 +1,504 @@
+{
+  "_doc": "Ground truth for scripts/evaluate.py. Frame indices are 0-based and inclusive. A make's window spans the final approach to the rim through the ball's exit from the bottom of the net. A clip is evaluated only once every shot's outcome is MAKE or MISS (use \"?\" while unlabeled).",
+  "clips": {
+    "chonyy_one_score_one_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {
+          "start": 50,
+          "end": 86,
+          "outcome": "MISS",
+          "note": "front-rim bounce, falls left"
+        },
+        {
+          "start": 156,
+          "end": 184,
+          "outcome": "MAKE"
+        }
+      ]
+    },
+    "chonyy_two_score_two_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {
+          "start": 55,
+          "end": 90,
+          "outcome": "MISS",
+          "note": "front-rim bounce, falls left"
+        },
+        {
+          "start": 150,
+          "end": 195,
+          "outcome": "MISS",
+          "note": "rolls on rim, falls left"
+        },
+        {
+          "start": 262,
+          "end": 290,
+          "outcome": "MAKE"
+        },
+        {
+          "start": 361,
+          "end": 385,
+          "outcome": "MAKE"
+        }
+      ]
+    },
+    "chonyy_two_score_three_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {
+          "start": 55,
+          "end": 90,
+          "outcome": "MISS"
+        },
+        {
+          "start": 150,
+          "end": 195,
+          "outcome": "MISS"
+        },
+        {
+          "start": 262,
+          "end": 292,
+          "outcome": "MISS",
+          "note": "front-rim bounce-out back toward shooter"
+        },
+        {
+          "start": 362,
+          "end": 390,
+          "outcome": "MAKE"
+        },
+        {
+          "start": 460,
+          "end": 486,
+          "outcome": "MAKE"
+        }
+      ]
+    },
+    "video_test_5.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 21,
+          "end": 78,
+          "outcome": "MAKE",
+          "card": "video_test_5_1"
+        },
+        {
+          "start": 211,
+          "end": 242,
+          "outcome": "MAKE",
+          "card": "video_test_5_2"
+        },
+        {
+          "start": 380,
+          "end": 424,
+          "outcome": "MAKE",
+          "card": "video_test_5_3"
+        },
+        {
+          "start": 534,
+          "end": 568,
+          "outcome": "MAKE",
+          "card": "video_test_5_4"
+        },
+        {
+          "start": 623,
+          "end": 689,
+          "outcome": "MAKE",
+          "card": "video_test_5_5"
+        },
+        {
+          "start": 774,
+          "end": 813,
+          "outcome": "MAKE",
+          "card": "video_test_5_6"
+        },
+        {
+          "start": 866,
+          "end": 919,
+          "outcome": "MAKE",
+          "card": "video_test_5_7"
+        },
+        {
+          "start": 1005,
+          "end": 1047,
+          "outcome": "MAKE",
+          "card": "video_test_5_8"
+        },
+        {
+          "start": 1106,
+          "end": 1159,
+          "outcome": "MAKE",
+          "card": "video_test_5_9"
+        },
+        {
+          "start": 1238,
+          "end": 1274,
+          "outcome": "MAKE",
+          "card": "video_test_5_10"
+        },
+        {
+          "start": 1359,
+          "end": 1405,
+          "outcome": "MAKE",
+          "card": "video_test_5_11"
+        },
+        {
+          "start": 1453,
+          "end": 1505,
+          "outcome": "MAKE",
+          "card": "video_test_5_12"
+        },
+        {
+          "start": 1572,
+          "end": 1607,
+          "outcome": "MAKE",
+          "card": "video_test_5_13"
+        },
+        {
+          "start": 1683,
+          "end": 1730,
+          "outcome": "MAKE",
+          "card": "video_test_5_14"
+        },
+        {
+          "start": 1782,
+          "end": 1824,
+          "outcome": "MAKE",
+          "card": "video_test_5_15"
+        },
+        {
+          "start": 1906,
+          "end": 1946,
+          "outcome": "MAKE",
+          "card": "video_test_5_16"
+        },
+        {
+          "start": 1995,
+          "end": 2047,
+          "outcome": "MAKE",
+          "card": "video_test_5_17"
+        },
+        {
+          "start": 2113,
+          "end": 2146,
+          "outcome": "MAKE",
+          "card": "video_test_5_18"
+        },
+        {
+          "start": 2199,
+          "end": 2233,
+          "outcome": "MAKE",
+          "card": "video_test_5_19"
+        },
+        {
+          "start": 2298,
+          "end": 2331,
+          "outcome": "MAKE",
+          "card": "video_test_5_20"
+        },
+        {
+          "start": 2377,
+          "end": 2437,
+          "outcome": "MAKE",
+          "card": "video_test_5_21"
+        },
+        {
+          "start": 2507,
+          "end": 2550,
+          "outcome": "MAKE",
+          "card": "video_test_5_22"
+        },
+        {
+          "start": 2597,
+          "end": 2652,
+          "outcome": "MAKE",
+          "card": "video_test_5_23",
+          "note": "merged cards video_test_5_23+video_test_5_24"
+        },
+        {
+          "start": 2697,
+          "end": 2735,
+          "outcome": "MAKE",
+          "card": "video_test_5_25"
+        },
+        {
+          "start": 2778,
+          "end": 2811,
+          "outcome": "MAKE",
+          "card": "video_test_5_26"
+        },
+        {
+          "start": 2903,
+          "end": 2931,
+          "outcome": "MAKE",
+          "card": "video_test_5_27"
+        },
+        {
+          "start": 2989,
+          "end": 3041,
+          "outcome": "MAKE",
+          "card": "video_test_5_28"
+        },
+        {
+          "start": 3104,
+          "end": 3129,
+          "outcome": "MAKE",
+          "card": "video_test_5_29"
+        },
+        {
+          "start": 3217,
+          "end": 3255,
+          "outcome": "MAKE",
+          "card": "video_test_5_30"
+        },
+        {
+          "start": 3310,
+          "end": 3371,
+          "outcome": "MAKE",
+          "card": "video_test_5_31"
+        }
+      ]
+    },
+    "chonyy_sample_video.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 49,
+          "end": 94,
+          "outcome": "MAKE",
+          "card": "chonyy_sample_video_1"
+        }
+      ]
+    },
+    "lf_shot_detection.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 55,
+          "end": 82,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_1"
+        },
+        {
+          "start": 161,
+          "end": 195,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_2"
+        },
+        {
+          "start": 272,
+          "end": 303,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_3"
+        },
+        {
+          "start": 370,
+          "end": 413,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_4"
+        },
+        {
+          "start": 503,
+          "end": 532,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_5"
+        },
+        {
+          "start": 600,
+          "end": 640,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_6"
+        },
+        {
+          "start": 707,
+          "end": 765,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_7"
+        },
+        {
+          "start": 833,
+          "end": 895,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_8"
+        },
+        {
+          "start": 959,
+          "end": 1015,
+          "outcome": "MISS",
+          "card": "lf_shot_detection_9"
+        },
+        {
+          "start": 1081,
+          "end": 1115,
+          "outcome": "MAKE",
+          "card": "lf_shot_detection_10"
+        }
+      ]
+    },
+    "lf_back.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03; full shot order re-confirmed by user",
+      "shots": [
+        {
+          "start": 44,
+          "end": 75,
+          "outcome": "MAKE",
+          "card": "lf_back_1"
+        },
+        {
+          "start": 140,
+          "end": 182,
+          "outcome": "MAKE",
+          "note": "added by Claude 2026-11-03 from frame review; confirmed by user (shot order: 9 is the only miss)"
+        },
+        {
+          "start": 261,
+          "end": 297,
+          "outcome": "MAKE",
+          "card": "lf_back_2"
+        },
+        {
+          "start": 359,
+          "end": 389,
+          "outcome": "MAKE",
+          "card": "lf_back_3"
+        },
+        {
+          "start": 491,
+          "end": 525,
+          "outcome": "MAKE",
+          "card": "lf_back_4"
+        },
+        {
+          "start": 588,
+          "end": 626,
+          "outcome": "MAKE",
+          "note": "added by Claude 2026-11-03 from frame review; confirmed by user (shot order: 9 is the only miss)"
+        },
+        {
+          "start": 736,
+          "end": 758,
+          "outcome": "MAKE",
+          "card": "lf_back_5"
+        },
+        {
+          "start": 822,
+          "end": 889,
+          "outcome": "MAKE",
+          "card": "lf_back_6"
+        },
+        {
+          "start": 948,
+          "end": 994,
+          "outcome": "MISS",
+          "card": "lf_back_7"
+        },
+        {
+          "start": 1074,
+          "end": 1114,
+          "outcome": "MAKE",
+          "card": "lf_back_8"
+        }
+      ]
+    },
+    "lf_alan.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 479,
+          "end": 535,
+          "outcome": "MAKE",
+          "card": "lf_alan_1"
+        },
+        {
+          "start": 624,
+          "end": 653,
+          "outcome": "MAKE",
+          "card": "lf_alan_2"
+        }
+      ]
+    },
+    "artur_vid29.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 196,
+          "end": 262,
+          "outcome": "MAKE",
+          "card": "artur_vid29_1"
+        },
+        {
+          "start": 476,
+          "end": 511,
+          "outcome": "MAKE",
+          "card": "artur_vid29_3"
+        },
+        {
+          "start": 725,
+          "end": 772,
+          "outcome": "MISS",
+          "card": "artur_vid29_5"
+        },
+        {
+          "start": 795,
+          "end": 847,
+          "outcome": "MAKE",
+          "card": "artur_vid29_6"
+        }
+      ]
+    },
+    "kyle_test_video.mp4": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 88,
+          "end": 117,
+          "outcome": "MAKE",
+          "card": "kyle_test_video_1"
+        }
+      ]
+    },
+    "aggie_NathanBBall.mov": {
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "shots": [
+        {
+          "start": 66,
+          "end": 117,
+          "outcome": "MISS",
+          "card": "aggie_NathanBBall_1"
+        },
+        {
+          "start": 205,
+          "end": 239,
+          "outcome": "MAKE",
+          "card": "aggie_NathanBBall_2"
+        },
+        {
+          "start": 308,
+          "end": 351,
+          "outcome": "MAKE",
+          "card": "aggie_NathanBBall_3"
+        },
+        {
+          "start": 519,
+          "end": 552,
+          "outcome": "MAKE",
+          "card": "aggie_NathanBBall_4"
+        },
+        {
+          "start": 617,
+          "end": 660,
+          "outcome": "MAKE",
+          "card": "aggie_NathanBBall_5"
+        },
+        {
+          "start": 740,
+          "end": 771,
+          "outcome": "MAKE",
+          "card": "aggie_NathanBBall_6"
+        }
+      ]
+    }
+  }
+}

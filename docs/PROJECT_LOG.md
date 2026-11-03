@@ -25,7 +25,6 @@ cd4c8e1 Wire RimTracker into main.py, remove manual calibration entirely
 b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 ```
 
-*(Note: full `git log --oneline -20` output was not retrievable this session due to a sandbox permission restriction on shell access to the repo directory; the above reflects the most recent commits visible in this session's git status snapshot. Update this list with the fuller history next time shell access is available.)*
 
 ### 2026-07-24 — Missed-makes investigation: measurement + external research
 
@@ -44,13 +43,40 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 
 **Addition, same day — arm-gate sweep completed:** `experiments/arm_gate_sweep.py` ran the real detection/tracking/rim-tracking pipeline over the 3 ground-truth clips, replicated today's `_update_idle` pre-arm logic locally (validated: reproduces the known 0/5 rescued), and swept a windowed (gap-tolerant) variant across N∈{2,3} × W∈{4,6,8,10,15}. Result: **0 of 5 missing makes rescued at every (N, W) tested**, with **0 spurious extra arm events** anywhere in the 3 clips at every setting. This was cross-checked (not a sweep bug) two ways: the baseline replication correctly reproduces 0/5, and a direct count of raw qualifying frames (detected + above-rim + aligned, before descent/consecutiveness) inside each of the 5 best-effort missing-shot windows came back exactly 0 in all 5 cases — a fresh, independent re-run of `scripts/diagnose_shots.py`'s never-armed-episode detector against all 3 clips this session also found 0 episodes beyond the 6 already-resolved shots in every clip, confirming these 5 misses have literally zero above-rim+aligned detections anywhere, not merely a broken streak. **Conclusion: the windowed arm-gate change (research doc's top recommendation) is still low-risk and worth keeping on the roadmap, but it would NOT by itself have rescued any of the 5 measured missing makes — it needs to be paired with either a looser above-rim/aligned test or a real detection-sparsity fix (recommendation #2, TrackNet-style) to address what was actually measured.** Wrote up both this windowed-gate patch and the previously-designed (and, this session, code-flow-verified) bounce-up gating fix as unapplied, ready-to-review proposals in `experiments/proposed_state_machine_patches.md`, including a discovery that the bounce-up fix makes `ResolutionReason.MISS_BOUNCE_UP` structurally unreachable going forward (traced through `_update_armed`'s control flow, not just asserted). Added `tests/test_arm_gate_sweep.py` (3 tests, passing) covering the sweep's own windowed-gate simulation in isolation. Full suite: 98/98 passing (95 pre-existing + 3 new). No files under `shotvision/` were modified — `experiments/arm_gate_sweep.py`, `experiments/proposed_state_machine_patches.md`, and `tests/test_arm_gate_sweep.py` are new files only.
 
+### 2026-11-03 — Root cause found: ByteTrack was dropping the ball; tracker replaced, evaluation harness added
+
+- **Root cause of every "missing make":** `BallTracker` used `model.track()` (ByteTrack). Raw `predict()` detects the ball above the rim at conf 0.79-0.88 for ~12 straight frames per make, but ByteTrack's IoU association never confirms a track for a ball moving ~12-15 px/frame on a ~23 px box, so `track()` output nothing until the ball slowed down in the net. The "~20% detection rate", "makes are never seen above the rim", the arming failure and the 2026-08-12 scoring bug were all downstream of this.
+- **Fix (branch `fix/ball-tracking`):** `BallTracker` now runs `predict()` and links the ball by nearest neighbour, with a jump gate scaled by ball width × frames elapsed (`tracker.max_jump_ball_widths`, `tracker.max_gap_frames`). Ball coverage on the chonyy clips went from ~20% to ~75% of frames.
+- **Reverted in-band arming (Patch 2):** with the ball visible above the rim, the original stricter above-rim arming scores identically. Removed the unreachable `MISS_BOUNCE_UP` exit.
+- **Measured:** the hoop box from this checkpoint spans rim + net (y 174-212 on the chonyy camera, rim ring at ~175-182), so `rim.rim_y` sits mid-net. Not currently causing errors; candidate cleanup.
+- **New `scripts/evaluate.py`:** scores the pipeline against `sample_clips/labels.json` (per-shot outcomes, false makes, spurious shots, and ball-coverage smoothness on makes), with cached detections so logic changes replay in seconds. **New `scripts/render_overlay.py`:** headless HUD video for visual review.
+- **Result:** chonyy clips (labeled from viewed frames) score 11/11 shots correct, 0 false makes, make-window ball coverage 90-96% with gaps of at most 2 frames.
+- **External research** (11 open-source shot trackers, read in code): avishah3, whose checkpoint we use, runs plain per-frame detection with no tracker; abdullahtarek deliberately avoids ByteTrack for the ball. JadenS180 (MIT) reports 28/29 shots with 0 false makes using a ~0.25 s make-confirmation hold, size and steepness vetoes that can only turn makes into misses, and a stationary-false-positive filter. These are queued as loop candidates.
+- **Labels:** the user labeled 68 candidate shot windows across 8 more clips on a labeling page (59 makes, 4 misses, 5 not-a-shot; kyle_validation_video dropped at the user's request). Two video_test_5 cards were one shot and were merged. The new tracker found 2 lf_back makes that had no card; both were confirmed by frame review and added, marked as such. Total: 11 clips, 75 shots (65 makes, 10 misses).
+- **Evaluate → fix loop** (agreed stop rule: every clip exact, 0 false makes, smoothness passing; cap ~8 iterations). Every iteration kept 0 false makes:
+
+  | Iter | Change | Correct |
+  |---|---|---|
+  | 0 | baseline (ByteTrack fix) | 52/75 |
+  | 1 | velocity-gated association, stationary-object filter (a round "1" sign was detected as a ball 219 times), guarded track switching | 56/75 |
+  | 2 | no track switching during the 2-4 frame blur gap at the rim (a shooter's head, conf up to 0.69, was taking over) | 58/75 |
+  | 3-4 | gate sized by the followed ball; 24-frame occlusion grace when last seen at the hoop (ball hidden in the net 11-19 frames); arming survives one missed frame; align tolerance 0.6 → 1.0 | 66/75 |
+  | 5 | weak (0.03-0.15) boxes continue a followed ball through the net; never arm/cross/resolve | 66/75 (make coverage 70% → 75%) |
+  | 6 | track identity (a shot only scores the ball it armed on); strength = best recent conf; velocity over gaps up to 8 frames; gate around last position too | 67/75 |
+  | 7 | scoring line at 0.4 of the hoop box (box spans rim + net; midline is mid-net) | **68/75** |
+
+  A subagent measured detection variants on the 12 hardest windows: imgsz 1280 and a hoop-ROI crop each *added* false makes; low conf helped only as continuation.
+- **Stopped at iteration 7, stop rule not met.** 5/11 clips pass outright. Of the 7 remaining failures, 6 are makes the detector cannot see (dark ball motion-blurred over the backboard or below the net, ball out of frame, a huge blurred ball on kyle_test_video) at any setting tried. The 7th (lf_shot_detection f600) would need a more make-favourable rule across a 14-frame gap, which 10 labeled misses can't show is safe. Smoothness: average make-window coverage 76%, average longest gap 5.7 frames, but 23 of 65 make windows still fail the strict check (gap ≤ 6 frames, coverage ≥ 60%), almost all because of the net/blur gap.
+- **Next:** (1) film and label misses from the target camera (rim-outs, in-and-outs, airballs) so false-make safety is actually measured; (2) fine-tune the detector on motion-blurred ball frames from that camera (scripts/finetune_roboflow.py); (3) re-run scripts/evaluate.py after each.
+
 ---
 
 ## Tools used
 
 - Python 3.12
 - `ultralytics` (YOLO) for ball + hoop detection
-- ByteTrack (`bytetrack.yaml`) for multi-object tracking
+- Per-frame YOLO detection + gated nearest-neighbour ball association (ByteTrack removed 2026-11-03)
+- `scripts/evaluate.py` + `sample_clips/labels.json` as the regression scoreboard
 - OpenCV for video I/O and frame processing
 - PyTorch on MPS (Apple Silicon) for inference
 - `certifi` (SSL workaround, needed for model/weight downloads on macOS)

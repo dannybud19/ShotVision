@@ -8,17 +8,32 @@
     "device": "auto",
     "conf": 0.15,
     "imgsz": 960,
-    "track_conf": 0.10,
-    "rim_conf": 0.60
+    "track_conf": 0.03,
+    "rim_conf": 0.6
   },
   "tracker": {
-    "tracker_yaml": "bytetrack.yaml"
+    "gate_base_widths": 1.5,
+    "gate_per_frame_widths": 0.5,
+    "max_jump_ball_widths": 3.0,
+    "max_gap_frames": 15,
+    "switch_strong_conf": 0.5,
+    "switch_weak_conf": 0.3,
+    "switch_stale_frames": 8,
+    "stationary_window_frames": 180,
+    "stationary_min_span_frames": 90,
+    "stationary_min_hits": 25,
+    "stationary_radius_widths": 0.6,
+    "weak_gate_scale": 0.6,
+    "weak_size_ratio": 1.6
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,
-    "align_tolerance_ratio": 0.6,
+    "align_tolerance_ratio": 1.0,
     "descent_min_frames": 2,
+    "scoring_line_fraction": 0.4,
+    "prearm_max_missed_frames": 1,
     "occlusion_grace_frames": 12,
+    "rim_occlusion_grace_frames": 24,
     "shot_timeout_frames": 90,
     "trajectory_buffer_len": 60,
     "rim_ema_alpha": 0.25,

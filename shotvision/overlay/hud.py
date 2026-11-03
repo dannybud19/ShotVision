@@ -1,10 +1,10 @@
-"""Live overlay: calibrated rim box, ball trajectory trail (color-coded by
+"""Live overlay: tracked rim box, ball trajectory trail (color-coded by
 shot state), and a running makes/misses/percentage counter.
 
 Color convention adapted from chonyy/AI-basketball-analysis's shot
 visualization (convention only — no code from that project is used here;
 it depends on CUDA/OpenPose and a Faster R-CNN detector we deliberately
-avoided in favor of our own YOLO+ByteTrack pipeline):
+avoided in favor of our own YOLO + nearest-neighbour tracking pipeline):
   blue   = ball tracked normally, no shot in progress
   purple = shot in progress / undetermined
   green  = most recent shot was a MAKE

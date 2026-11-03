@@ -34,14 +34,14 @@ class ModelConfig:
     # observation for the state machine.
     conf: float = 0.15
     imgsz: int = 960
-    # Confidence floor fed into model.track() (ByteTrack), separate from and
-    # below `conf`. Matches bytetrack.yaml's default track_low_thresh so
-    # ByteTrack's own low-confidence recovery (designed to sustain a track
-    # through partial occlusion, e.g. a ball partly hidden by net cords) gets
-    # the full population of candidate boxes instead of having them filtered
-    # out before it ever sees them. Never surfaced as a confirmed observation
-    # by itself — only `conf`-and-above detections are.
-    track_conf: float = 0.10
+    # Raw candidate floor passed to the per-frame predict() in BallTracker,
+    # separate from and below `conf`. Lower-confidence boxes are returned to
+    # callers (rim tracking applies its own stricter `rim_conf`) but never
+    # become confirmed ball observations by themselves — only
+    # `conf`-and-above detections do.
+    # 0.03: low-confidence boxes recover the ball faintly visible through the
+    # net; they are only ever used for weak continuation (ball_tracker.py).
+    track_conf: float = 0.03
     # Confirmation threshold for HOOP detections feeding automatic rim
     # tracking (shot_logic/rim_tracker.py). Stricter than ball `conf` by
     # design: a false hoop reading corrupts the scoring geometry itself,
@@ -55,7 +55,46 @@ class ModelConfig:
 
 @dataclass
 class TrackerConfig:
-    tracker_yaml: str = "bytetrack.yaml"
+    # Ball association (tracking/ball_tracker.py). ByteTrack was dropped: its
+    # IoU association can't follow a ball moving ~half its own width per
+    # frame. See ball_tracker.py for the full rules.
+    #
+    # With a velocity estimate, a detection must fall within
+    # (gate_base_widths + gate_per_frame_widths * frames_elapsed) ball widths
+    # of the position predicted from that velocity. Without one (a single
+    # recent point), within max_jump_ball_widths * frames_elapsed widths of
+    # the last position.
+    gate_base_widths: float = 1.5
+    # 0.5/frame: measured, 1.0/frame let a shooter's head 153px from the
+    # prediction (4 frames into a blur gap at the rim) into the gate.
+    gate_per_frame_widths: float = 0.5
+    max_jump_ball_widths: float = 3.0
+    # After this many frames without an accepted detection the followed ball
+    # is dropped and the most confident detection is (re)acquired.
+    max_gap_frames: int = 15
+    # Switch to a detection outside the gate only if it is at least this
+    # confident AND the followed ball was itself weaker than switch_weak_conf
+    # (e.g. the tracker latched onto a player's head, conf ~0.2, while the
+    # real ball, conf ~0.8, flies) or has been unseen for switch_stale_frames.
+    # The stale wait must outlast the 2-4 frame motion-blur gap as the ball
+    # drops through the rim: measured, a shooter's head (conf up to 0.69)
+    # otherwise hijacks the track there and fakes a miss.
+    switch_strong_conf: float = 0.5
+    switch_weak_conf: float = 0.3
+    switch_stale_frames: int = 8
+    # Stationary false positives (a round sign, a ball on the floor): ignore
+    # a detection whose spot (within stationary_radius_widths ball widths)
+    # produced >= stationary_min_hits detections spread over at least
+    # stationary_min_span_frames within the last stationary_window_frames.
+    stationary_window_frames: int = 180
+    stationary_min_span_frames: int = 90
+    stationary_min_hits: int = 25
+    stationary_radius_widths: float = 0.6
+    # Weak continuation (rule 5 in ball_tracker.py): a sub-threshold box may
+    # continue the followed ball inside weak_gate_scale x the normal gate,
+    # at a width within weak_size_ratio of the followed ball's.
+    weak_gate_scale: float = 0.6
+    weak_size_ratio: float = 1.6
 
 
 @dataclass
@@ -65,11 +104,24 @@ class ShotLogicConfig:
     inner_bound_shrink: float = 0.15
     # How far outside the rim's horizontal span (as a ratio of rim width) the
     # ball may still be considered "aligned" while approaching from above.
-    align_tolerance_ratio: float = 0.6
+    # 1.0 (was 0.6): measured, real makes are often last seen above the rim
+    # just outside the 0.6 span; arming looseness can't create a make by
+    # itself (scoring still needs an inner-gate crossing).
+    align_tolerance_ratio: float = 1.0
     descent_min_frames: int = 2
+    # Where the scoring line sits within the hoop box (0 = top, 1 = bottom).
+    # The box spans rim + net; 0.5 (old default, `RimRegion.rim_y`) is mid-net.
+    # Swept 0.5/0.4/0.3/0.2/0.1: 0.4 fixed one make and broke nothing; 0.2
+    # broke a different make.
+    scoring_line_fraction: float = 0.4
+    # Missing-detection frames the pre-arm descent streak survives.
+    prearm_max_missed_frames: int = 1
     # Consecutive missing-detection frames tolerated before a shot is
-    # considered lost to occlusion rather than failed (hand at release, net).
+    # considered lost to occlusion rather than failed (hand at release).
     occlusion_grace_frames: int = 12
+    # The same, when the ball was last seen at the hoop: a ball in the net is
+    # hidden for 11-19 frames on measured footage.
+    rim_occlusion_grace_frames: int = 24
     # Frames since a shot armed before it's forced to resolve as a MISS.
     shot_timeout_frames: int = 90
     trajectory_buffer_len: int = 60

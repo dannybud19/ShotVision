@@ -6,7 +6,7 @@ missed detections, so every ambiguous case resolves to MISS, never MAKE.
 Scoring is **trajectory-crossing based**, not band-membership based. Rather
 than requiring a ball detection to land inside the rim's (possibly very thin)
 vertical band, we test whether the ball's path crosses the rim's horizontal
-midline (`rim.rim_y`), and where. This is robust to sparse detections and
+line (`_scoring_line_y`, near the rim's top), and where. This is robust to sparse detections and
 thin calibrations — the ball can be occluded or simply not detected while
 passing through the rim, and we still recover the crossing.
 
@@ -23,20 +23,18 @@ when preceded by a consistent approach; only a sustained drift across the
 window does.
 
 Flow (per ball observation fed in frame by frame):
-  IDLE  -> ARMED : ball above the rim or already in-band (not yet below it),
-                    roughly aligned horizontally, and descending for
-                    `descent_min_frames` in a row. The in-band allowance
-                    exists because real shots on measured footage are often
-                    first detected already descending at rim height, never
-                    genuinely above the rim first.
+  IDLE  -> ARMED : ball above the rim, roughly aligned horizontally, and
+                    descending for `descent_min_frames` in a row. (An earlier
+                    variant also armed from in-band detections to work around
+                    the ball never being seen above the rim; that turned out
+                    to be ByteTrack dropping the fast ball — see
+                    tracking/ball_tracker.py — so the stricter rule is back.)
   ARMED -> MAKE  : the ball's path crosses the rim line within the inner
                     horizontal gate, and the *whole ball* then reaches below
-                    the outlined rim (bbox top edge below `outer_bottom`)
-                    without bouncing back up.
+                    the outlined rim (bbox top edge below `outer_bottom`).
   ARMED -> MISS  : the path crosses the rim line outside the inner gate
                     (rim-out), the whole ball reaches below the rim without a
-                    valid through-crossing, the ball bounces back above the
-                    rim after reaching it, or the shot never resolves within
+                    valid through-crossing, or the shot never resolves within
                     `shot_timeout_frames` / an `occlusion_grace_frames` gap.
 
 A brief net/hand occlusion (missing detections up to `occlusion_grace_frames`)
@@ -79,15 +77,22 @@ class BallObservation:
     top: float
     right: float
     bottom: float
+    # A low-confidence detection that only continues an already-followed
+    # ball (see tracking/ball_tracker.py). It keeps an armed shot alive
+    # through the net but never arms, crosses, or resolves a shot.
+    weak: bool = False
+    # Followed-ball identity from the tracker (None when not tracked, e.g.
+    # in tests). An armed shot only scores the identity it armed on.
+    track_id: int | None = None
 
     @property
     def center(self) -> tuple[float, float]:
         return (self.x, self.y)
 
     @classmethod
-    def from_bbox(cls, bbox: tuple[float, float, float, float]) -> "BallObservation":
+    def from_bbox(cls, bbox: tuple[float, float, float, float], weak: bool = False) -> "BallObservation":
         x1, y1, x2, y2 = bbox
-        return cls(x=(x1 + x2) / 2, y=(y1 + y2) / 2, left=x1, top=y1, right=x2, bottom=y2)
+        return cls(x=(x1 + x2) / 2, y=(y1 + y2) / 2, left=x1, top=y1, right=x2, bottom=y2, weak=weak)
 
     @classmethod
     def from_center(cls, x: float, y: float, radius: float = 3.0) -> "BallObservation":
@@ -133,7 +138,6 @@ class ResolutionReason(Enum):
     MAKE_CONFIRMED = "make_confirmed"
     MISS_RIM_OUT_SIDEWAYS = "miss_rim_out_sideways"  # crossed rim line outside inner gate
     MISS_BELOW_WITHOUT_INNER = "miss_below_without_inner"  # whole ball below, no valid crossing
-    MISS_BOUNCE_UP = "miss_bounce_up"  # bounced back above rim after reaching it
     MISS_OCCLUSION_GAP = "miss_occlusion_gap"  # no detection longer than grace
     MISS_TIMEOUT_OCCLUDED = "miss_timeout_occluded"  # timed out during an occlusion gap
     MISS_TIMEOUT_ABOVE = "miss_timeout_above"  # timed out still hovering above the rim
@@ -166,6 +170,7 @@ class ShotStateMachine:
     def _reset_prearm(self) -> None:
         self._prearm_streak = 0
         self._prearm_last_y: float | None = None
+        self._prearm_missed = 0
 
     def _reset_armed(self) -> None:
         self._passed_through = False
@@ -176,6 +181,7 @@ class ShotStateMachine:
         self._recent: deque[BallObservation] = deque(maxlen=_CROSSING_FIT_WINDOW)
         self._frames_since_detection = 0
         self._frames_in_state = 0
+        self._armed_track_id: int | None = None
         # Rolling record of the armed shot's frames for diagnostics.
         self._trace: deque[TraceEntry] = deque(maxlen=_TRACE_LEN)
 
@@ -189,16 +195,23 @@ class ShotStateMachine:
         if isinstance(obs, tuple):
             obs = BallObservation.from_center(*obs)
         if self.state is ShotState.IDLE:
-            return self._update_idle(obs, frame_idx)
+            # Weak observations never contribute to arming.
+            return self._update_idle(None if obs is not None and obs.weak else obs, frame_idx)
         return self._update_armed(obs, frame_idx)
 
     def _update_idle(self, obs: BallObservation | None, frame_idx: int) -> None:
         if obs is None:
-            self._reset_prearm()
+            # A single motion-blurred frame mid-descent shouldn't zero the
+            # streak (measured: it blocked arming on real makes); a longer
+            # gap still does.
+            self._prearm_missed += 1
+            if self._prearm_missed > self.config.prearm_max_missed_frames:
+                self._reset_prearm()
             return None
 
+        self._prearm_missed = 0
         x, y = obs.center
-        if not self.rim.is_below(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
+        if self.rim.is_above(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
             if self._prearm_last_y is not None and y >= self._prearm_last_y - _DESCENT_JITTER_PX:
                 self._prearm_streak += 1
             else:
@@ -208,6 +221,7 @@ class ShotStateMachine:
             if self._prearm_streak >= self.config.descent_min_frames:
                 self._reset_prearm()
                 self._reset_armed()
+                self._armed_track_id = obs.track_id
                 self.state = ShotState.ARMED
                 self._recent.append(obs)  # seed the trajectory for crossing tests
                 self._trace.append((frame_idx, obs.center))
@@ -215,19 +229,58 @@ class ShotStateMachine:
             self._reset_prearm()
         return None
 
+    def _scoring_line_y(self) -> float:
+        """The horizontal plane a made shot crosses inside the inner gate:
+        `scoring_line_fraction` of the way down the hoop box. The model's hoop
+        box spans rim + net, so its midline (0.5) sits mid-net, where the
+        ball is hidden and pushed sideways by the cords; the rim itself is
+        near the top of the box."""
+        rim = self.rim
+        return rim.outer_top + self.config.scoring_line_fraction * (rim.outer_bottom - rim.outer_top)
+
+    def _occlusion_grace(self) -> int:
+        """Frames of missing detections tolerated before giving up. Longer
+        when the ball was last seen at the hoop: a ball dropping through the
+        net is hidden (or blurred) for 11-19 frames on measured footage,
+        longer than the general grace that covers e.g. a hand at release."""
+        last = self._recent[-1] if self._recent else None
+        if last is not None:
+            rim = self.rim
+            rim_h = rim.outer_bottom - rim.outer_top
+            if abs(last.x - rim.center_x) <= rim.outer_width and last.y >= rim.outer_top - rim_h:
+                return self.config.rim_occlusion_grace_frames
+        return self.config.occlusion_grace_frames
+
     def _update_armed(self, obs: BallObservation | None, frame_idx: int) -> ShotResult | None:
+        if (
+            obs is not None
+            and obs.track_id is not None
+            and self._armed_track_id is not None
+            and obs.track_id != self._armed_track_id
+        ):
+            # The tracker is now following a different object (measured: it
+            # can pick up a shooter's head while the ball is hidden in the
+            # net). That object says nothing about this shot.
+            obs = None
         self._frames_in_state += 1
         self._trace.append((frame_idx, obs.center if obs is not None else None))
 
         if obs is None:
             self._frames_since_detection += 1
-            if self._frames_since_detection > self.config.occlusion_grace_frames:
+            if self._frames_since_detection > self._occlusion_grace():
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_OCCLUSION_GAP)
             if self._frames_in_state > self.config.shot_timeout_frames:
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)
             return None
 
         self._frames_since_detection = 0
+        if obs.weak:
+            # The followed ball is still there (e.g. faintly through the net),
+            # so the shot isn't lost — but a low-confidence box is never
+            # evidence for a crossing or a make.
+            if self._frames_in_state > self.config.shot_timeout_frames:
+                return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)
+            return None
         x, y = obs.center
         rim = self.rim
         prev = self._recent[-1] if self._recent else None
@@ -236,10 +289,11 @@ class ShotStateMachine:
         # cross the rim line going downward? (Spans occlusion/low-confidence
         # gaps — prev is the last *confirmed* position, not necessarily the
         # immediately previous frame.)
-        if prev is not None and prev.y < rim.rim_y <= y:
+        line_y = self._scoring_line_y()
+        if prev is not None and prev.y < line_y <= y:
             self._reached_rim = True
             fit_points = [p.center for p in self._recent] + [obs.center]
-            cross_x = _fit_cross_x(fit_points, rim.rim_y)
+            cross_x = _fit_cross_x(fit_points, line_y)
             if rim.is_inside_inner_bounds(cross_x):
                 self._passed_through = True
             else:
@@ -248,11 +302,6 @@ class ShotStateMachine:
                 if rim.is_within_outer_x(cross_x):
                     return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_RIM_OUT_SIDEWAYS)
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BELOW_WITHOUT_INNER)
-
-        # Bounced back up above the rim after having reached it — rim-out /
-        # airball off the back iron.
-        if self._reached_rim and not self._passed_through and rim.is_above(y):
-            return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BOUNCE_UP)
 
         # Whole ball below the outlined rim (bbox top edge past the bottom) —
         # the shot has resolved one way or the other.

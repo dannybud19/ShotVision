@@ -181,34 +181,19 @@ def test_resets_to_idle_ready_for_next_shot_after_resolving():
     assert results[0].outcome is ShotOutcome.MAKE
 
 
-def test_inband_detection_arms_without_ever_being_seen_above_rim():
-    # Regression test for the measured missing-makes failure mode: a ball
-    # whose first-ever detection is already in-band (never observed above
-    # the rim at all) must still be able to arm, given enough consecutive
-    # in-band+aligned+descending frames. This is the exact shape of all 5
-    # real missing makes in the ground-truth clips (docs/tracking-research.md).
+def test_inband_first_detection_does_not_arm():
+    # Arming requires the ball to be seen above the rim. (An earlier variant
+    # armed from in-band detections too, to work around ByteTrack dropping
+    # the fast ball above the rim; with that tracking bug fixed the stricter,
+    # more false-positive-averse rule scores the ground-truth clips equally.)
     sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
     # rim: outer y 50..70 -> in-band is 50 <= y <= 70
-    positions = [(150, 55), (150, 60)]
-    _feed(sm, positions)
-    assert sm.state is ShotState.ARMED
-
-
-def test_inband_arming_still_requires_alignment():
-    # Loosening the vertical test must not loosen the horizontal one - an
-    # in-band but misaligned detection (x far from rim center) must still
-    # fail to arm, same as today's above-rim behavior.
-    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
-    results = _feed(sm, [(400, 55), (400, 60)])
+    results = _feed(sm, [(150, 55), (150, 60)])
     assert sm.state is ShotState.IDLE
     assert results == []
 
 
-def test_below_rim_detection_still_does_not_arm():
-    # The fix relaxes above-rim to above-OR-in-band, not to "anywhere" - a
-    # detection already below the rim must still fail to arm, since by that
-    # point a real shot attempt would already be resolving through
-    # _update_armed, not still in pre-arm.
+def test_below_rim_detection_does_not_arm():
     sm = ShotStateMachine(_rim(), _config(descent_min_frames=2))
     results = _feed(sm, [(150, 90), (150, 95)])  # below outer_bottom=70
     assert sm.state is ShotState.IDLE
@@ -242,11 +227,9 @@ def test_reason_below_without_inner():
 
 
 def test_reason_make_confirmed_after_bounce_post_passthrough():
-    # Post bounce-up-gating-fix, MISS_BOUNCE_UP can no longer be reached by
-    # any real trajectory: _reached_rim only survives across frames via the
-    # inner-bounds crossing branch, which sets _passed_through=True in the
-    # same statement block. See experiments/proposed_state_machine_patches.md
-    # Patch 3 for the traced control-flow argument.
+    # A bounce back above the rim after a valid through-crossing does not
+    # overturn the shot (the old MISS_BOUNCE_UP exit was unreachable and has
+    # been removed; see experiments/proposed_state_machine_patches.md Patch 3).
     sm = ShotStateMachine(_rim(), _config())
     results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 30), (150, 80)])
     assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
@@ -380,3 +363,53 @@ def test_multi_point_fit_recovers_make_that_two_point_interpolation_would_miss()
     assert len(results) == 1
     assert results[0].outcome is ShotOutcome.MAKE
     assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_weak_observation_never_arms():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config())
+    for i, y in enumerate((10, 20, 30)):
+        sm.update(BallObservation.from_bbox((147, y - 3, 153, y + 3), weak=True), i)
+    assert sm.state is ShotState.IDLE
+
+
+def test_weak_observation_keeps_shot_alive_but_never_resolves_it():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=2))
+    _feed(sm, [(150, 10), (150, 20)])  # arm
+    assert sm.state is ShotState.ARMED
+    # Weak boxes well past the grace period, even below the rim: no resolution.
+    for i in range(2, 8):
+        r = sm.update(BallObservation.from_bbox((147, 77, 153, 83), weak=True), i)
+        assert r is None
+    assert sm.state is ShotState.ARMED
+
+
+def test_armed_shot_ignores_a_different_tracked_object():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=5))
+
+    def obs(x, y, tid):
+        o = BallObservation.from_center(x, y)
+        o.track_id = tid
+        return o
+
+    sm.update(obs(150, 10, 1), 0)
+    sm.update(obs(150, 20, 1), 1)
+    assert sm.state is ShotState.ARMED
+    # The tracker switches to another object below the rim, outside the gate.
+    assert sm.update(obs(300, 90, 2), 2) is None
+    assert sm.state is ShotState.ARMED
+    # The armed ball continues through the rim: a make.
+    sm.update(obs(150, 60, 1), 3)
+    r = sm.update(obs(150, 80, 1), 4)
+    assert r is not None and r.outcome is ShotOutcome.MAKE
+
+
+def test_prearm_streak_survives_a_single_missed_frame():
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2, prearm_max_missed_frames=1))
+    _feed(sm, [(150, 10), None, (150, 25)])
+    assert sm.state is ShotState.ARMED
+    sm2 = ShotStateMachine(_rim(), _config(descent_min_frames=2, prearm_max_missed_frames=1))
+    _feed(sm2, [(150, 10), None, None, (150, 25)])
+    assert sm2.state is ShotState.IDLE

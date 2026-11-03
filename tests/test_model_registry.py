@@ -40,3 +40,25 @@ def test_resolve_weights_falls_back_on_download_failure(tmp_path, monkeypatch):
 
     assert result == "yolo11n.pt"
     assert not weights_path.exists()
+
+
+def test_download_rejects_checksum_mismatch(tmp_path, monkeypatch):
+    import io
+
+    class _Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(model_registry.urllib.request, "urlopen", lambda *a, **k: _Resp(b"tampered"))
+    dest = tmp_path / "w.pt"
+    try:
+        model_registry._download("https://example.invalid/w.pt", dest, sha256="0" * 64)
+        raised = False
+    except model_registry.ChecksumMismatch:
+        raised = True
+    assert raised
+    assert not dest.exists()
+    assert not dest.with_suffix(".pt.part").exists()
