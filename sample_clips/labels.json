@@ -338,7 +338,7 @@
       ]
     },
     "lf_back.mp4": {
-      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03; full shot order re-confirmed by user",
       "shots": [
         {
           "start": 44,
@@ -350,7 +350,7 @@
           "start": 140,
           "end": 182,
           "outcome": "MAKE",
-          "note": "added by Claude 2026-11-03 from frame review (no card; old tracker never saw the ball here)"
+          "note": "added by Claude 2026-11-03 from frame review; confirmed by user (shot order: 9 is the only miss)"
         },
         {
           "start": 261,
@@ -374,7 +374,7 @@
           "start": 588,
           "end": 626,
           "outcome": "MAKE",
-          "note": "added by Claude 2026-11-03 from frame review (no card; old tracker never saw the ball here)"
+          "note": "added by Claude 2026-11-03 from frame review; confirmed by user (shot order: 9 is the only miss)"
         },
         {
           "start": 736,
