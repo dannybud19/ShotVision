@@ -81,6 +81,9 @@ class BallObservation:
     # ball (see tracking/ball_tracker.py). It keeps an armed shot alive
     # through the net but never arms, crosses, or resolves a shot.
     weak: bool = False
+    # Followed-ball identity from the tracker (None when not tracked, e.g.
+    # in tests). An armed shot only scores the identity it armed on.
+    track_id: int | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -178,6 +181,7 @@ class ShotStateMachine:
         self._recent: deque[BallObservation] = deque(maxlen=_CROSSING_FIT_WINDOW)
         self._frames_since_detection = 0
         self._frames_in_state = 0
+        self._armed_track_id: int | None = None
         # Rolling record of the armed shot's frames for diagnostics.
         self._trace: deque[TraceEntry] = deque(maxlen=_TRACE_LEN)
 
@@ -217,6 +221,7 @@ class ShotStateMachine:
             if self._prearm_streak >= self.config.descent_min_frames:
                 self._reset_prearm()
                 self._reset_armed()
+                self._armed_track_id = obs.track_id
                 self.state = ShotState.ARMED
                 self._recent.append(obs)  # seed the trajectory for crossing tests
                 self._trace.append((frame_idx, obs.center))
@@ -238,6 +243,16 @@ class ShotStateMachine:
         return self.config.occlusion_grace_frames
 
     def _update_armed(self, obs: BallObservation | None, frame_idx: int) -> ShotResult | None:
+        if (
+            obs is not None
+            and obs.track_id is not None
+            and self._armed_track_id is not None
+            and obs.track_id != self._armed_track_id
+        ):
+            # The tracker is now following a different object (measured: it
+            # can pick up a shooter's head while the ball is hidden in the
+            # net). That object says nothing about this shot.
+            obs = None
         self._frames_in_state += 1
         self._trace.append((frame_idx, obs.center if obs is not None else None))
 

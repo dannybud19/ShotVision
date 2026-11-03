@@ -27,6 +27,7 @@ def _make_tracker(buffer_len=5, confirm_conf=0.15, max_jump_ball_widths=3.0, max
     tracker.detector = _FakeDetector(confirm_conf)
     tracker.cfg = TrackerConfig(max_jump_ball_widths=max_jump_ball_widths, max_gap_frames=max_gap_frames)
     tracker._candidate_history = deque()
+    tracker.track_id = 0
     return tracker
 
 
@@ -180,3 +181,58 @@ def test_update_runs_end_to_end_on_blank_frame():
 
     assert isinstance(detections, list)
     assert ball_tracker.frame_idx == 1
+
+
+def test_ball_decelerating_in_net_stays_on_the_same_track():
+    # The prediction overshoots when the net stops the ball; the gate also
+    # accepts detections near the last position (measured failure: the ball in
+    # the net at conf 0.72 was rejected for 7 frames).
+    tracker = _make_tracker(buffer_len=20)
+    for i in range(4):  # falling fast, 15 px/frame
+        _step(tracker, [Detection(BALL, 0.8, (100, 100 + 15 * i, 120, 120 + 15 * i))])
+    for _ in range(3):  # caught in the net: barely moving
+        _step(tracker, [Detection(BALL, 0.7, (100, 147, 120, 167))])
+        assert tracker.current_frame_ball_obs is not None
+    assert tracker.track_id == 0  # no switch happened
+
+
+def test_strong_false_positive_cannot_take_a_recently_strong_track():
+    # The ball blurs to a low score at the rim; a confident head-like box
+    # elsewhere must not take the track while the ball was strong recently.
+    tracker = _make_tracker(buffer_len=20)
+    for i in range(3):
+        _step(tracker, [Detection(BALL, 0.8, (100, 100 + 10 * i, 120, 120 + 10 * i))])
+    _step(tracker, [Detection(BALL, 0.2, (100, 130, 120, 150))])
+    _step(tracker, [])
+    _step(tracker, [Detection(BALL, 0.7, (300, 300, 328, 328))])
+    assert tracker.current_frame_ball_obs is None
+    assert tracker.track_id == 0
+
+
+def test_switch_to_another_object_starts_a_new_track_identity():
+    tracker = _make_tracker(buffer_len=20)
+    _step(tracker, [Detection(BALL, 0.2, (0, 0, 20, 20))])  # weak track (e.g. a head)
+    _step(tracker, [Detection(BALL, 0.9, (300, 300, 320, 320))])
+    assert tracker.current_frame_ball_pos == (310, 310)
+    assert tracker.current_frame_ball_obs.track_id == 1
+
+
+def test_weak_detection_only_continues_a_followed_ball():
+    tracker = _make_tracker(buffer_len=20, confirm_conf=0.15)
+    _step(tracker, [Detection(BALL, 0.05, (0, 0, 20, 20))])
+    assert tracker.current_frame_ball_obs is None  # never starts a track
+
+    for i in range(3):
+        _step(tracker, [Detection(BALL, 0.8, (100, 100 + 10 * i, 120, 120 + 10 * i))])
+    _step(tracker, [Detection(BALL, 0.05, (100, 130, 120, 150))])  # on the predicted path
+    obs = tracker.current_frame_ball_obs
+    assert obs is not None and obs.weak
+
+
+def test_stationary_detection_is_ignored():
+    tracker = _make_tracker(buffer_len=200)
+    tracker.cfg = TrackerConfig(stationary_min_hits=5, stationary_min_span_frames=4, stationary_window_frames=50)
+    for _ in range(6):
+        _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])
+    _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])
+    assert tracker.current_frame_ball_obs is None

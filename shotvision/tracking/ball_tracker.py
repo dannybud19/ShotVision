@@ -43,8 +43,15 @@ from shotvision.config.settings import TrackerConfig
 from shotvision.detection.detector import BALL, Detection, Detector
 from shotvision.shot_logic.state_machine import BallObservation
 
-# Velocity is only estimated from two confirmed points this close in time.
-_VELOCITY_MAX_SPAN_FRAMES = 3
+# Velocity is only estimated from two accepted points this close in time.
+# (3 was too short: after a short blur gap there was no velocity, and the
+# no-velocity fallback gate grew to ~400px — wide enough to admit a head.)
+_VELOCITY_MAX_SPAN_FRAMES = 8
+
+# A followed ball's strength is its best confident sighting within this many
+# frames: a ball seen at 0.8 that blurs to 0.2 at the rim is still a strong
+# track, not one a passing false positive may take over.
+_STRENGTH_WINDOW_FRAMES = 10
 
 
 @dataclass
@@ -54,6 +61,7 @@ class TrajectoryPoint:
     y: float
     conf: float
     width: float = 0.0  # bbox width; sizes the association gate
+    track_id: int = 0  # which followed-ball identity this point belongs to
 
 
 def _width(d: Detection) -> float:
@@ -66,6 +74,10 @@ class BallTracker:
         self.cfg = tracker_config
         self.trajectory: deque[TrajectoryPoint] = deque(maxlen=buffer_len)
         self.frame_idx = 0
+        # Identity of the followed ball: bumped whenever the tracker abandons
+        # a live followed ball for a different object, and carried on each BallObservation so the state machine
+        # only scores the ball a shot armed on.
+        self.track_id = 0
         # Every confirmed-confidence ball candidate seen recently, chosen or
         # not: (frame_idx, x, y). Feeds the stationary-object filter.
         self._candidate_history: deque[tuple[int, float, float]] = deque()
@@ -135,27 +147,41 @@ class BallTracker:
         for d in candidates:
             self._candidate_history.append((self.frame_idx, *d.center))
 
-    def _choose(self, candidates: list[Detection]) -> Detection | None:
+    def _choose(self, candidates: list[Detection]) -> tuple[Detection | None, bool]:
+        """Returns (chosen detection or None, whether it starts a new
+        followed-ball identity)."""
         last = self._last_point()
         if last is None:
-            return max(candidates, key=lambda d: d.conf)
+            # (Re)acquisition after the followed ball expired keeps the
+            # identity: e.g. the ball reappearing below the net after a long
+            # occlusion is the same ball the shot armed on. Only abandoning a
+            # live track for another object (below) starts a new identity.
+            return max(candidates, key=lambda d: d.conf), False
 
         elapsed = max(1, self.frame_idx - last.frame_idx)
         velocity = self._velocity()
         if velocity is not None:
-            anchor = (last.x + velocity[0] * elapsed, last.y + velocity[1] * elapsed)
+            # Gate around the predicted position AND the last position: a ball
+            # caught by the net or rolling on the rim decelerates abruptly, so
+            # the prediction overshoots while the ball stays put (measured:
+            # the ball in the net at conf 0.72 was rejected for 7 frames).
+            predicted = (last.x + velocity[0] * elapsed, last.y + velocity[1] * elapsed)
+            anchors = [predicted, (last.x, last.y)]
             gate_widths = self.cfg.gate_base_widths + self.cfg.gate_per_frame_widths * elapsed
         else:
-            anchor = (last.x, last.y)
+            anchors = [(last.x, last.y)]
             gate_widths = self.cfg.max_jump_ball_widths * elapsed
 
         # Size the gate by the followed ball, not the candidate: a false
         # positive (a head) is often bigger than the ball and would widen its
         # own gate.
         ball_width = last.width or min(_width(d) for d in candidates)
-        nearest = min(candidates, key=lambda d: math.dist(d.center, anchor))
-        if math.dist(nearest.center, anchor) <= gate_widths * ball_width:
-            return nearest
+        def dist(d: Detection) -> float:
+            return min(math.dist(d.center, a) for a in anchors)
+
+        nearest = min(candidates, key=dist)
+        if dist(nearest) <= gate_widths * ball_width:
+            return nearest, False
 
         # Nothing plausible near the followed ball. Switch only to a confident
         # detection, and only if the followed ball is stale or was weak.
@@ -163,15 +189,21 @@ class BallTracker:
         # Judge the followed ball by its last *confident* sighting: a weak
         # continuation through the net must not make the track look weak
         # and hand it to a strong false positive (measured: a shooter's head).
-        followed_conf = next(
-            (p.conf for p in reversed(self.trajectory) if p.conf >= self.detector.conf), 0.0
+        followed_conf = max(
+            (
+                p.conf for p in self.trajectory
+                if p.track_id == last.track_id
+                and p.conf >= self.detector.conf
+                and last.frame_idx - p.frame_idx <= _STRENGTH_WINDOW_FRAMES
+            ),
+            default=0.0,
         )
         followed_is_stale_or_weak = (
             elapsed >= self.cfg.switch_stale_frames or followed_conf < self.cfg.switch_weak_conf
         )
         if strong.conf >= self.cfg.switch_strong_conf and followed_is_stale_or_weak:
-            return strong
-        return None
+            return strong, True
+        return None, False
 
     def _choose_weak(self, weak: list[Detection]) -> Detection | None:
         """A low-confidence detection may only continue a followed ball with
@@ -208,7 +240,7 @@ class BallTracker:
         candidates = [d for d in confident if not self._is_stationary(d)]
         self._record_candidates(confident)
 
-        chosen = self._choose(candidates) if candidates else None
+        chosen, new_track = self._choose(candidates) if candidates else (None, False)
         weak = False
         if chosen is None:
             chosen = self._choose_weak([d for d in balls if d.conf < self.detector.conf])
@@ -216,10 +248,16 @@ class BallTracker:
         if chosen is None:
             return  # occlusion frame or implausible jump: trajectory untouched
 
+        if new_track:
+            self.track_id += 1
         x, y = chosen.center
-        self.trajectory.append(TrajectoryPoint(self.frame_idx, x, y, chosen.conf, _width(chosen)))
+        self.trajectory.append(
+            TrajectoryPoint(self.frame_idx, x, y, chosen.conf, _width(chosen), self.track_id)
+        )
         self.current_frame_ball_pos = (x, y)
-        self.current_frame_ball_obs = BallObservation.from_bbox(chosen.bbox, weak=weak)
+        obs = BallObservation.from_bbox(chosen.bbox, weak=weak)
+        obs.track_id = self.track_id
+        self.current_frame_ball_obs = obs
 
     def reset(self) -> None:
         self.trajectory.clear()

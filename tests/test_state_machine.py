@@ -363,3 +363,53 @@ def test_multi_point_fit_recovers_make_that_two_point_interpolation_would_miss()
     assert len(results) == 1
     assert results[0].outcome is ShotOutcome.MAKE
     assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_weak_observation_never_arms():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config())
+    for i, y in enumerate((10, 20, 30)):
+        sm.update(BallObservation.from_bbox((147, y - 3, 153, y + 3), weak=True), i)
+    assert sm.state is ShotState.IDLE
+
+
+def test_weak_observation_keeps_shot_alive_but_never_resolves_it():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=2))
+    _feed(sm, [(150, 10), (150, 20)])  # arm
+    assert sm.state is ShotState.ARMED
+    # Weak boxes well past the grace period, even below the rim: no resolution.
+    for i in range(2, 8):
+        r = sm.update(BallObservation.from_bbox((147, 77, 153, 83), weak=True), i)
+        assert r is None
+    assert sm.state is ShotState.ARMED
+
+
+def test_armed_shot_ignores_a_different_tracked_object():
+    from shotvision.shot_logic.state_machine import BallObservation
+    sm = ShotStateMachine(_rim(), _config(occlusion_grace_frames=5))
+
+    def obs(x, y, tid):
+        o = BallObservation.from_center(x, y)
+        o.track_id = tid
+        return o
+
+    sm.update(obs(150, 10, 1), 0)
+    sm.update(obs(150, 20, 1), 1)
+    assert sm.state is ShotState.ARMED
+    # The tracker switches to another object below the rim, outside the gate.
+    assert sm.update(obs(300, 90, 2), 2) is None
+    assert sm.state is ShotState.ARMED
+    # The armed ball continues through the rim: a make.
+    sm.update(obs(150, 60, 1), 3)
+    r = sm.update(obs(150, 80, 1), 4)
+    assert r is not None and r.outcome is ShotOutcome.MAKE
+
+
+def test_prearm_streak_survives_a_single_missed_frame():
+    sm = ShotStateMachine(_rim(), _config(descent_min_frames=2, prearm_max_missed_frames=1))
+    _feed(sm, [(150, 10), None, (150, 25)])
+    assert sm.state is ShotState.ARMED
+    sm2 = ShotStateMachine(_rim(), _config(descent_min_frames=2, prearm_max_missed_frames=1))
+    _feed(sm2, [(150, 10), None, None, (150, 25)])
+    assert sm2.state is ShotState.IDLE
