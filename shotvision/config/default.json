@@ -30,6 +30,7 @@
     "inner_bound_shrink": 0.15,
     "align_tolerance_ratio": 1.0,
     "descent_min_frames": 2,
+    "scoring_line_fraction": 0.4,
     "prearm_max_missed_frames": 1,
     "occlusion_grace_frames": 12,
     "rim_occlusion_grace_frames": 24,

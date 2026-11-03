@@ -109,6 +109,11 @@ class ShotLogicConfig:
     # itself (scoring still needs an inner-gate crossing).
     align_tolerance_ratio: float = 1.0
     descent_min_frames: int = 2
+    # Where the scoring line sits within the hoop box (0 = top, 1 = bottom).
+    # The box spans rim + net; 0.5 (old default, `RimRegion.rim_y`) is mid-net.
+    # Swept 0.5/0.4/0.3/0.2/0.1: 0.4 fixed one make and broke nothing; 0.2
+    # broke a different make.
+    scoring_line_fraction: float = 0.4
     # Missing-detection frames the pre-arm descent streak survives.
     prearm_max_missed_frames: int = 1
     # Consecutive missing-detection frames tolerated before a shot is

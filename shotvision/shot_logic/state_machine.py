@@ -6,7 +6,7 @@ missed detections, so every ambiguous case resolves to MISS, never MAKE.
 Scoring is **trajectory-crossing based**, not band-membership based. Rather
 than requiring a ball detection to land inside the rim's (possibly very thin)
 vertical band, we test whether the ball's path crosses the rim's horizontal
-midline (`rim.rim_y`), and where. This is robust to sparse detections and
+line (`_scoring_line_y`, near the rim's top), and where. This is robust to sparse detections and
 thin calibrations — the ball can be occluded or simply not detected while
 passing through the rim, and we still recover the crossing.
 
@@ -229,6 +229,15 @@ class ShotStateMachine:
             self._reset_prearm()
         return None
 
+    def _scoring_line_y(self) -> float:
+        """The horizontal plane a made shot crosses inside the inner gate:
+        `scoring_line_fraction` of the way down the hoop box. The model's hoop
+        box spans rim + net, so its midline (0.5) sits mid-net, where the
+        ball is hidden and pushed sideways by the cords; the rim itself is
+        near the top of the box."""
+        rim = self.rim
+        return rim.outer_top + self.config.scoring_line_fraction * (rim.outer_bottom - rim.outer_top)
+
     def _occlusion_grace(self) -> int:
         """Frames of missing detections tolerated before giving up. Longer
         when the ball was last seen at the hoop: a ball dropping through the
@@ -280,10 +289,11 @@ class ShotStateMachine:
         # cross the rim line going downward? (Spans occlusion/low-confidence
         # gaps — prev is the last *confirmed* position, not necessarily the
         # immediately previous frame.)
-        if prev is not None and prev.y < rim.rim_y <= y:
+        line_y = self._scoring_line_y()
+        if prev is not None and prev.y < line_y <= y:
             self._reached_rim = True
             fit_points = [p.center for p in self._recent] + [obs.center]
-            cross_x = _fit_cross_x(fit_points, rim.rim_y)
+            cross_x = _fit_cross_x(fit_points, line_y)
             if rim.is_inside_inner_bounds(cross_x):
                 self._passed_through = True
             else:
