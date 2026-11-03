@@ -39,7 +39,9 @@ class ModelConfig:
     # callers (rim tracking applies its own stricter `rim_conf`) but never
     # become confirmed ball observations by themselves — only
     # `conf`-and-above detections do.
-    track_conf: float = 0.10
+    # 0.03: low-confidence boxes recover the ball faintly visible through the
+    # net; they are only ever used for weak continuation (ball_tracker.py).
+    track_conf: float = 0.03
     # Confirmation threshold for HOOP detections feeding automatic rim
     # tracking (shot_logic/rim_tracker.py). Stricter than ball `conf` by
     # design: a false hoop reading corrupts the scoring geometry itself,
@@ -88,6 +90,11 @@ class TrackerConfig:
     stationary_min_span_frames: int = 90
     stationary_min_hits: int = 25
     stationary_radius_widths: float = 0.6
+    # Weak continuation (rule 5 in ball_tracker.py): a sub-threshold box may
+    # continue the followed ball inside weak_gate_scale x the normal gate,
+    # at a width within weak_size_ratio of the followed ball's.
+    weak_gate_scale: float = 0.6
+    weak_size_ratio: float = 1.6
 
 
 @dataclass

@@ -27,6 +27,11 @@ Association rules, per frame (all thresholds in TrackerConfig):
      MISS calls on measured footage.
   4. After max_gap_frames without an accepted detection, re-acquire the most
      confident candidate.
+  5. If no confident detection was accepted, a *weak* one (track_conf <= conf
+     < the confirmation threshold) may continue the followed ball — only
+     inside a tighter gate around the prediction and at a consistent size.
+     It is marked `weak=True`; the state machine uses it to keep an armed
+     shot alive (the ball faintly visible through the net) and nothing else.
 """
 from __future__ import annotations
 
@@ -155,12 +160,41 @@ class BallTracker:
         # Nothing plausible near the followed ball. Switch only to a confident
         # detection, and only if the followed ball is stale or was weak.
         strong = max(candidates, key=lambda d: d.conf)
+        # Judge the followed ball by its last *confident* sighting: a weak
+        # continuation through the net must not make the track look weak
+        # and hand it to a strong false positive (measured: a shooter's head).
+        followed_conf = next(
+            (p.conf for p in reversed(self.trajectory) if p.conf >= self.detector.conf), 0.0
+        )
         followed_is_stale_or_weak = (
-            elapsed >= self.cfg.switch_stale_frames or last.conf < self.cfg.switch_weak_conf
+            elapsed >= self.cfg.switch_stale_frames or followed_conf < self.cfg.switch_weak_conf
         )
         if strong.conf >= self.cfg.switch_strong_conf and followed_is_stale_or_weak:
             return strong
         return None
+
+    def _choose_weak(self, weak: list[Detection]) -> Detection | None:
+        """A low-confidence detection may only continue a followed ball with
+        a velocity estimate: nearest to the prediction, inside
+        weak_gate_scale x the normal gate, and within weak_size_ratio of the
+        followed ball's width."""
+        last = self._last_point()
+        velocity = self._velocity()
+        if not weak or last is None or velocity is None or not last.width:
+            return None
+        elapsed = max(1, self.frame_idx - last.frame_idx)
+        anchor = (last.x + velocity[0] * elapsed, last.y + velocity[1] * elapsed)
+        gate = (
+            self.cfg.weak_gate_scale
+            * (self.cfg.gate_base_widths + self.cfg.gate_per_frame_widths * elapsed)
+            * last.width
+        )
+        ratio = self.cfg.weak_size_ratio
+        plausible = [
+            d for d in weak
+            if math.dist(d.center, anchor) <= gate and 1 / ratio <= _width(d) / last.width <= ratio
+        ]
+        return min(plausible, key=lambda d: math.dist(d.center, anchor)) if plausible else None
 
     def _update_trajectory(self, detections: list[Detection]) -> None:
         self.current_frame_ball_pos = None
@@ -169,22 +203,23 @@ class BallTracker:
         # observation; lower-confidence boxes (down to track_conf) are still
         # returned to callers (e.g. for hoop tracking) but never become ball
         # observations by themselves.
-        confident = [
-            d for d in detections if d.class_name == BALL and d.conf >= self.detector.conf
-        ]
+        balls = [d for d in detections if d.class_name == BALL]
+        confident = [d for d in balls if d.conf >= self.detector.conf]
         candidates = [d for d in confident if not self._is_stationary(d)]
         self._record_candidates(confident)
-        if not candidates:
-            return  # occlusion frame: trajectory untouched
 
-        chosen = self._choose(candidates)
+        chosen = self._choose(candidates) if candidates else None
+        weak = False
         if chosen is None:
-            return  # implausible jump: treat as unobserved
+            chosen = self._choose_weak([d for d in balls if d.conf < self.detector.conf])
+            weak = chosen is not None
+        if chosen is None:
+            return  # occlusion frame or implausible jump: trajectory untouched
 
         x, y = chosen.center
         self.trajectory.append(TrajectoryPoint(self.frame_idx, x, y, chosen.conf, _width(chosen)))
         self.current_frame_ball_pos = (x, y)
-        self.current_frame_ball_obs = BallObservation.from_bbox(chosen.bbox)
+        self.current_frame_ball_obs = BallObservation.from_bbox(chosen.bbox, weak=weak)
 
     def reset(self) -> None:
         self.trajectory.clear()

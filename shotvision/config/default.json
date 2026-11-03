@@ -8,7 +8,7 @@
     "device": "auto",
     "conf": 0.15,
     "imgsz": 960,
-    "track_conf": 0.1,
+    "track_conf": 0.03,
     "rim_conf": 0.6
   },
   "tracker": {
@@ -22,7 +22,9 @@
     "stationary_window_frames": 180,
     "stationary_min_span_frames": 90,
     "stationary_min_hits": 25,
-    "stationary_radius_widths": 0.6
+    "stationary_radius_widths": 0.6,
+    "weak_gate_scale": 0.6,
+    "weak_size_ratio": 1.6
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,

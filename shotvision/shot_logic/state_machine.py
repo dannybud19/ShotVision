@@ -77,15 +77,19 @@ class BallObservation:
     top: float
     right: float
     bottom: float
+    # A low-confidence detection that only continues an already-followed
+    # ball (see tracking/ball_tracker.py). It keeps an armed shot alive
+    # through the net but never arms, crosses, or resolves a shot.
+    weak: bool = False
 
     @property
     def center(self) -> tuple[float, float]:
         return (self.x, self.y)
 
     @classmethod
-    def from_bbox(cls, bbox: tuple[float, float, float, float]) -> "BallObservation":
+    def from_bbox(cls, bbox: tuple[float, float, float, float], weak: bool = False) -> "BallObservation":
         x1, y1, x2, y2 = bbox
-        return cls(x=(x1 + x2) / 2, y=(y1 + y2) / 2, left=x1, top=y1, right=x2, bottom=y2)
+        return cls(x=(x1 + x2) / 2, y=(y1 + y2) / 2, left=x1, top=y1, right=x2, bottom=y2, weak=weak)
 
     @classmethod
     def from_center(cls, x: float, y: float, radius: float = 3.0) -> "BallObservation":
@@ -187,7 +191,8 @@ class ShotStateMachine:
         if isinstance(obs, tuple):
             obs = BallObservation.from_center(*obs)
         if self.state is ShotState.IDLE:
-            return self._update_idle(obs, frame_idx)
+            # Weak observations never contribute to arming.
+            return self._update_idle(None if obs is not None and obs.weak else obs, frame_idx)
         return self._update_armed(obs, frame_idx)
 
     def _update_idle(self, obs: BallObservation | None, frame_idx: int) -> None:
@@ -245,6 +250,13 @@ class ShotStateMachine:
             return None
 
         self._frames_since_detection = 0
+        if obs.weak:
+            # The followed ball is still there (e.g. faintly through the net),
+            # so the shot isn't lost — but a low-confidence box is never
+            # evidence for a crossing or a make.
+            if self._frames_in_state > self.config.shot_timeout_frames:
+                return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)
+            return None
         x, y = obs.center
         rim = self.rim
         prev = self._recent[-1] if self._recent else None
