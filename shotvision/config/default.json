@@ -8,11 +8,12 @@
     "device": "auto",
     "conf": 0.15,
     "imgsz": 960,
-    "track_conf": 0.10,
-    "rim_conf": 0.60
+    "track_conf": 0.1,
+    "rim_conf": 0.6
   },
   "tracker": {
-    "tracker_yaml": "bytetrack.yaml"
+    "max_jump_ball_widths": 3.0,
+    "max_gap_frames": 15
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,

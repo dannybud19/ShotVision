@@ -23,20 +23,18 @@ when preceded by a consistent approach; only a sustained drift across the
 window does.
 
 Flow (per ball observation fed in frame by frame):
-  IDLE  -> ARMED : ball above the rim or already in-band (not yet below it),
-                    roughly aligned horizontally, and descending for
-                    `descent_min_frames` in a row. The in-band allowance
-                    exists because real shots on measured footage are often
-                    first detected already descending at rim height, never
-                    genuinely above the rim first.
+  IDLE  -> ARMED : ball above the rim, roughly aligned horizontally, and
+                    descending for `descent_min_frames` in a row. (An earlier
+                    variant also armed from in-band detections to work around
+                    the ball never being seen above the rim; that turned out
+                    to be ByteTrack dropping the fast ball — see
+                    tracking/ball_tracker.py — so the stricter rule is back.)
   ARMED -> MAKE  : the ball's path crosses the rim line within the inner
                     horizontal gate, and the *whole ball* then reaches below
-                    the outlined rim (bbox top edge below `outer_bottom`)
-                    without bouncing back up.
+                    the outlined rim (bbox top edge below `outer_bottom`).
   ARMED -> MISS  : the path crosses the rim line outside the inner gate
                     (rim-out), the whole ball reaches below the rim without a
-                    valid through-crossing, the ball bounces back above the
-                    rim after reaching it, or the shot never resolves within
+                    valid through-crossing, or the shot never resolves within
                     `shot_timeout_frames` / an `occlusion_grace_frames` gap.
 
 A brief net/hand occlusion (missing detections up to `occlusion_grace_frames`)
@@ -133,7 +131,6 @@ class ResolutionReason(Enum):
     MAKE_CONFIRMED = "make_confirmed"
     MISS_RIM_OUT_SIDEWAYS = "miss_rim_out_sideways"  # crossed rim line outside inner gate
     MISS_BELOW_WITHOUT_INNER = "miss_below_without_inner"  # whole ball below, no valid crossing
-    MISS_BOUNCE_UP = "miss_bounce_up"  # bounced back above rim after reaching it
     MISS_OCCLUSION_GAP = "miss_occlusion_gap"  # no detection longer than grace
     MISS_TIMEOUT_OCCLUDED = "miss_timeout_occluded"  # timed out during an occlusion gap
     MISS_TIMEOUT_ABOVE = "miss_timeout_above"  # timed out still hovering above the rim
@@ -198,7 +195,7 @@ class ShotStateMachine:
             return None
 
         x, y = obs.center
-        if not self.rim.is_below(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
+        if self.rim.is_above(y) and self.rim.is_aligned(x, self.config.align_tolerance_ratio):
             if self._prearm_last_y is not None and y >= self._prearm_last_y - _DESCENT_JITTER_PX:
                 self._prearm_streak += 1
             else:
@@ -248,11 +245,6 @@ class ShotStateMachine:
                 if rim.is_within_outer_x(cross_x):
                     return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_RIM_OUT_SIDEWAYS)
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BELOW_WITHOUT_INNER)
-
-        # Bounced back up above the rim after having reached it — rim-out /
-        # airball off the back iron.
-        if self._reached_rim and not self._passed_through and rim.is_above(y):
-            return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BOUNCE_UP)
 
         # Whole ball below the outlined rim (bbox top edge past the bottom) —
         # the shot has resolved one way or the other.

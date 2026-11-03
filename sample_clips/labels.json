@@ -1,0 +1,31 @@
+{
+  "_doc": "Ground truth for scripts/evaluate.py. Frame indices are 0-based and inclusive. A make's window spans the final approach to the rim through the ball's exit from the bottom of the net. A clip is evaluated only once every shot's outcome is MAKE or MISS (use \"?\" while unlabeled).",
+  "clips": {
+    "chonyy_one_score_one_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {"start": 50, "end": 86, "outcome": "MISS", "note": "front-rim bounce, falls left"},
+        {"start": 156, "end": 184, "outcome": "MAKE"}
+      ]
+    },
+    "chonyy_two_score_two_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {"start": 55, "end": 90, "outcome": "MISS", "note": "front-rim bounce, falls left"},
+        {"start": 150, "end": 195, "outcome": "MISS", "note": "rolls on rim, falls left"},
+        {"start": 262, "end": 290, "outcome": "MAKE"},
+        {"start": 361, "end": 385, "outcome": "MAKE"}
+      ]
+    },
+    "chonyy_two_score_three_miss.mp4": {
+      "verified": "frames viewed 2026-11-03",
+      "shots": [
+        {"start": 55, "end": 90, "outcome": "MISS"},
+        {"start": 150, "end": 195, "outcome": "MISS"},
+        {"start": 262, "end": 292, "outcome": "MISS", "note": "front-rim bounce-out back toward shooter"},
+        {"start": 362, "end": 390, "outcome": "MAKE"},
+        {"start": 460, "end": 486, "outcome": "MAKE"}
+      ]
+    }
+  }
+}

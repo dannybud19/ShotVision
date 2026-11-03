@@ -21,6 +21,11 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from shotvision.capture.source import FrameSource
 from shotvision.config.settings import load_config
 from shotvision.detection.detector import Detector

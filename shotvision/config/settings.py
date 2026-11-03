@@ -34,13 +34,11 @@ class ModelConfig:
     # observation for the state machine.
     conf: float = 0.15
     imgsz: int = 960
-    # Confidence floor fed into model.track() (ByteTrack), separate from and
-    # below `conf`. Matches bytetrack.yaml's default track_low_thresh so
-    # ByteTrack's own low-confidence recovery (designed to sustain a track
-    # through partial occlusion, e.g. a ball partly hidden by net cords) gets
-    # the full population of candidate boxes instead of having them filtered
-    # out before it ever sees them. Never surfaced as a confirmed observation
-    # by itself — only `conf`-and-above detections are.
+    # Raw candidate floor passed to the per-frame predict() in BallTracker,
+    # separate from and below `conf`. Lower-confidence boxes are returned to
+    # callers (rim tracking applies its own stricter `rim_conf`) but never
+    # become confirmed ball observations by themselves — only
+    # `conf`-and-above detections do.
     track_conf: float = 0.10
     # Confirmation threshold for HOOP detections feeding automatic rim
     # tracking (shot_logic/rim_tracker.py). Stricter than ball `conf` by
@@ -55,7 +53,15 @@ class ModelConfig:
 
 @dataclass
 class TrackerConfig:
-    tracker_yaml: str = "bytetrack.yaml"
+    # Nearest-neighbour ball association (tracking/ball_tracker.py). A new
+    # detection links to the followed ball only if it moved at most
+    # max_jump_ball_widths ball-widths per frame elapsed since the ball was
+    # last confirmed; after max_gap_frames without a confirmation the ball is
+    # re-acquired from the most confident detection. (ByteTrack was dropped:
+    # its IoU association can't follow a ball moving ~half its own width per
+    # frame — see ball_tracker.py.)
+    max_jump_ball_widths: float = 3.0
+    max_gap_frames: int = 15
 
 
 @dataclass
