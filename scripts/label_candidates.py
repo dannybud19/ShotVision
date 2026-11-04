@@ -68,13 +68,6 @@ MIN_SPAN_WIDTHS = 0.8    # the ball must move at least this far (hoop widths)
 MAX_WINDOW_S = 4.0       # longer episodes are split at their biggest gap
 
 
-def clip_fps(path: Path) -> float:
-    cap = cv2.VideoCapture(str(path))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-    cap.release()
-    return fps if fps > 1 else 30.0
-
-
 def _rim_units(x, y, rim):
     h = rim.outer_bottom - rim.outer_top
     return (x - rim.center_x) / rim.outer_width, (y - rim.outer_top) / h
@@ -320,8 +313,8 @@ def build(args) -> int:
         return 2
     rel = path.resolve().relative_to(ev.CLIPS_DIR.resolve()) if path.resolve().is_relative_to(ev.CLIPS_DIR.resolve()) else path
     dets = ev.load_detections(path, config)
-    fps = clip_fps(path)
-    rep = ev.replay(dets, config, fps=fps) if "fps" in ev.replay.__code__.co_varnames else ev.replay(dets, config)
+    fps = ev.clip_fps(path)
+    rep = ev.replay(dets, config, fps=fps)
     cands = find_candidates(dets, rep, fps, config.model.conf)
     out_dir = OUT_ROOT / path.stem
     out_dir.mkdir(parents=True, exist_ok=True)

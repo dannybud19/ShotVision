@@ -61,8 +61,9 @@ def run(machine_cls) -> tuple[int, int, int, int, list[str]]:
     correct = shots = false_makes = spurious = 0
     bad = []
     for clip, labels in ev.load_labels().items():
-        rep = ev.replay(ev.load_detections(ev.CLIPS_DIR / clip, config), config)
-        score = ev.score_clip(clip, labels, rep, 0.6, 6)
+        fps = ev.clip_fps(ev.CLIPS_DIR / clip)
+        rep = ev.replay(ev.load_detections(ev.CLIPS_DIR / clip, config), config, fps=fps)
+        score = ev.score_clip(clip, labels, rep, 0.6, 6, fps)
         shots += len(score.checks)
         false_makes += score.false_makes
         spurious += len(score.spurious)

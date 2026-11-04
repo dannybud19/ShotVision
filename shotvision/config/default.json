@@ -1,6 +1,7 @@
 {
   "camera": {
-    "source": "0"
+    "source": "0",
+    "fps": 0.0
   },
   "model": {
     "weights": "models/basketball_best.pt",
@@ -13,15 +14,17 @@
   },
   "tracker": {
     "gate_base_widths": 1.5,
-    "gate_per_frame_widths": 0.5,
-    "max_jump_ball_widths": 3.0,
-    "max_gap_frames": 15,
+    "gate_growth_widths_per_s": 15.0,
+    "max_jump_widths_per_s": 90.0,
+    "max_gap_s": 0.5,
+    "velocity_max_span_s": 0.2667,
+    "strength_window_s": 0.3333,
     "switch_strong_conf": 0.5,
     "switch_weak_conf": 0.3,
-    "switch_stale_frames": 8,
-    "stationary_window_frames": 180,
-    "stationary_min_span_frames": 90,
-    "stationary_min_hits": 25,
+    "switch_stale_s": 0.2667,
+    "stationary_window_s": 6.0,
+    "stationary_min_span_s": 3.0,
+    "stationary_min_hits_s": 0.8333,
     "stationary_radius_widths": 0.6,
     "weak_gate_scale": 0.6,
     "weak_size_ratio": 1.6
@@ -29,15 +32,16 @@
   "shot_logic": {
     "inner_bound_shrink": 0.15,
     "align_tolerance_ratio": 1.0,
-    "descent_min_frames": 2,
+    "descent_min_s": 0.0667,
     "scoring_line_fraction": 0.4,
-    "prearm_max_missed_frames": 1,
-    "occlusion_grace_frames": 12,
-    "rim_occlusion_grace_frames": 24,
-    "shot_timeout_frames": 90,
-    "trajectory_buffer_len": 60,
+    "prearm_max_missed_s": 0.0333,
+    "occlusion_grace_s": 0.4,
+    "rim_occlusion_grace_s": 0.8,
+    "shot_timeout_s": 3.0,
+    "trajectory_buffer_s": 2.0,
+    "crossing_fit_window_s": 0.1333,
     "rim_ema_alpha": 0.25,
-    "rim_lost_grace_frames": 30,
+    "rim_lost_grace_s": 1.0,
     "rim_size_jump_max_ratio": 1.6
   }
 }

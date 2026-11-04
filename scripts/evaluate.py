@@ -14,7 +14,7 @@ Exit code 0 only when every labeled clip passes:
   - every labeled shot matched with the correct outcome, no spurious shots,
   - zero false makes,
   - every labeled make's window has >= --min-coverage ball coverage and no
-    gap longer than --max-gap frames.
+    gap longer than --max-gap-s seconds.
 
 Labels format (frame indices are 0-based, inclusive):
   {"clips": {"<file in sample_clips/>": {"shots": [
@@ -43,7 +43,7 @@ from types import SimpleNamespace
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from shotvision.config.settings import Config, load_config  # noqa: E402
+from shotvision.config.settings import REFERENCE_FPS, Config, load_config, to_frames  # noqa: E402
 from shotvision.detection.detector import Detection  # noqa: E402
 from shotvision.shot_logic.rim import RimRegion  # noqa: E402
 from shotvision.shot_logic.rim_tracker import RimTracker  # noqa: E402
@@ -60,8 +60,18 @@ LABELS_PATH = CLIPS_DIR / "labels.json"
 CACHE_DIR = REPO_ROOT / "experiments" / ".cache" / "detections"
 
 # A resolved shot matches a labeled shot if its resolution frame falls in the
-# labeled window, widened by this many frames on each side.
-MATCH_SLACK_FRAMES = 15
+# labeled window, widened by this much on each side (15 frames at 30 fps).
+MATCH_SLACK_S = 0.5
+
+
+def clip_fps(clip: Path) -> float:
+    """The clip's own frame rate (header only; no decoding, no model)."""
+    import cv2
+
+    cap = cv2.VideoCapture(str(clip))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+    cap.release()
+    return fps if fps > 1 else REFERENCE_FPS
 
 
 # ---------------------------------------------------------------------------
@@ -127,13 +137,21 @@ class Replay:
     trajectories: list[list] = field(default_factory=list)  # per-frame trajectory snapshot (optional)
 
 
-def replay(detections: list[list[Detection]], config: Config, keep_trajectories: bool = False) -> Replay:
+def replay(
+    detections: list[list[Detection]],
+    config: Config,
+    keep_trajectories: bool = False,
+    fps: float = REFERENCE_FPS,
+) -> Replay:
     """Feed recorded detections through the real tracking + shot logic, wired
-    exactly as shotvision/main.py wires it."""
+    exactly as shotvision/main.py wires it, timed at the clip's fps."""
     ball_tracker = BallTracker(
-        SimpleNamespace(conf=config.model.conf), config.tracker, config.shot_logic.trajectory_buffer_len
+        SimpleNamespace(conf=config.model.conf),
+        config.tracker,
+        to_frames(config.shot_logic.trajectory_buffer_s, fps),
+        fps=fps,
     )
-    rim_tracker = RimTracker(config.model, config.shot_logic)
+    rim_tracker = RimTracker(config.model, config.shot_logic, fps=fps)
     state_machine: ShotStateMachine | None = None
     out = Replay(frames=[], results=[])
     for frame_idx, dets in enumerate(detections):
@@ -141,7 +159,7 @@ def replay(detections: list[list[Detection]], config: Config, keep_trajectories:
         rim = rim_tracker.update(dets)
         if rim is not None:
             if state_machine is None:
-                state_machine = ShotStateMachine(rim, config.shot_logic)
+                state_machine = ShotStateMachine(rim, config.shot_logic, fps=fps)
             else:
                 state_machine.rim = rim
         obs = ball_tracker.current_frame_ball_obs
@@ -207,11 +225,14 @@ def _smoothness(frames: list[FrameState], start: int, end: int) -> tuple[float, 
     return sum(seen) / len(seen), longest
 
 
-def score_clip(clip: str, shots: list[dict], rep: Replay, min_coverage: float, max_gap: int) -> ClipScore:
+def score_clip(
+    clip: str, shots: list[dict], rep: Replay, min_coverage: float, max_gap: int, fps: float = REFERENCE_FPS
+) -> ClipScore:
     unmatched = list(rep.results)
     checks: list[ShotCheck] = []
+    slack = to_frames(MATCH_SLACK_S, fps)
     for shot in sorted(shots, key=lambda s: s["start"]):
-        lo, hi = shot["start"] - MATCH_SLACK_FRAMES, shot["end"] + MATCH_SLACK_FRAMES
+        lo, hi = shot["start"] - slack, shot["end"] + slack
         match = next((r for r in unmatched if lo <= r.frame_idx <= hi), None)
         if match is not None:
             unmatched.remove(match)
@@ -274,7 +295,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--config", help="JSON file of config overrides")
     p.add_argument("--recollect", action="store_true", help="Ignore cached detections")
     p.add_argument("--min-coverage", type=float, default=0.6)
-    p.add_argument("--max-gap", type=int, default=6)
+    p.add_argument("--max-gap-s", type=float, default=0.2, help="longest allowed ball gap in a make window (6 frames at 30 fps)")
     p.add_argument("-v", "--verbose", action="store_true", help="Show every shot, not just failures")
     return p.parse_args()
 
@@ -295,8 +316,9 @@ def main() -> int:
         if not path.exists():
             print(f"[SKIP] {clip}: file not found in sample_clips/")
             continue
-        rep = replay(load_detections(path, config, args.recollect), config)
-        score = score_clip(clip, labels[clip], rep, args.min_coverage, args.max_gap)
+        fps = clip_fps(path)
+        rep = replay(load_detections(path, config, args.recollect), config, fps=fps)
+        score = score_clip(clip, labels[clip], rep, args.min_coverage, to_frames(args.max_gap_s, fps), fps)
         print_score(score, rep, args.verbose)
         scores.append(score)
 

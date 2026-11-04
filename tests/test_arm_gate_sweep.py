@@ -29,10 +29,12 @@ def _config(**overrides):
         descent_min_frames=2,
         occlusion_grace_frames=5,
         shot_timeout_frames=20,
-        trajectory_buffer_len=60,
     )
     base.update(overrides)
-    return ShotLogicConfig(**base)
+    # The config is in seconds; these tests count frames at 30 fps.
+    keys = {"descent_min_frames": "descent_min_s", "occlusion_grace_frames": "occlusion_grace_s",
+            "shot_timeout_frames": "shot_timeout_s"}
+    return ShotLogicConfig(**{keys.get(k, k): (v / 30 if k in keys else v) for k, v in base.items()})
 
 
 def _obs(x=150.0, y=10.0):

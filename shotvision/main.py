@@ -18,7 +18,7 @@ import argparse
 
 import cv2
 
-from shotvision.config.settings import Config, load_config
+from shotvision.config.settings import Config, load_config, to_frames
 from shotvision.capture.source import FrameSource
 from shotvision.detection.detector import Detector
 from shotvision.detection.device import log_device_choice, resolve_device
@@ -62,13 +62,18 @@ def run(config: Config, loop: bool = False) -> None:
     log_device_choice(device, reason)
 
     detector = Detector(config.model, device)
-    ball_tracker = BallTracker(detector, config.tracker, config.shot_logic.trajectory_buffer_len)
-    rim_tracker = RimTracker(config.model, config.shot_logic)
     stats = StatsTracker()
     hud = Hud()
     state_machine: ShotStateMachine | None = None
 
     with FrameSource(config.camera.source, loop=loop) as source:
+        # Thresholds are in seconds; convert them at the source's real rate.
+        fps = config.camera.fps or source.fps
+        print(f"[ShotVision] Timing at {fps:.2f} fps.")
+        ball_tracker = BallTracker(
+            detector, config.tracker, to_frames(config.shot_logic.trajectory_buffer_s, fps), fps=fps
+        )
+        rim_tracker = RimTracker(config.model, config.shot_logic, fps=fps)
         cv2.namedWindow(WINDOW_NAME)
         paused = False
         frame_idx = 0
@@ -85,7 +90,7 @@ def run(config: Config, loop: bool = False) -> None:
 
                 if rim is not None:
                     if state_machine is None:
-                        state_machine = ShotStateMachine(rim, config.shot_logic)
+                        state_machine = ShotStateMachine(rim, config.shot_logic, fps=fps)
                         print("[ShotVision] Rim acquired — shot tracking active.")
                     else:
                         state_machine.rim = rim

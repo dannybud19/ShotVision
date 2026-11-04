@@ -25,7 +25,8 @@ def _make_tracker(buffer_len=5, confirm_conf=0.15, max_jump_ball_widths=3.0, max
     tracker.current_frame_ball_pos = None
     tracker.current_frame_ball_obs = None
     tracker.detector = _FakeDetector(confirm_conf)
-    tracker.cfg = TrackerConfig(max_jump_ball_widths=max_jump_ball_widths, max_gap_frames=max_gap_frames)
+    tracker.fps = 30.0  # the config is in seconds; these tests count frames at 30 fps
+    tracker.cfg = TrackerConfig(max_jump_widths_per_s=max_jump_ball_widths * 30, max_gap_s=max_gap_frames / 30)
     tracker._candidate_history = deque()
     tracker.track_id = 0
     return tracker
@@ -231,7 +232,7 @@ def test_weak_detection_only_continues_a_followed_ball():
 
 def test_stationary_detection_is_ignored():
     tracker = _make_tracker(buffer_len=200)
-    tracker.cfg = TrackerConfig(stationary_min_hits=5, stationary_min_span_frames=4, stationary_window_frames=50)
+    tracker.cfg = TrackerConfig(stationary_min_hits_s=5 / 30, stationary_min_span_s=4 / 30, stationary_window_s=50 / 30)
     for _ in range(6):
         _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])
     _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])

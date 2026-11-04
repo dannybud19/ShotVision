@@ -75,7 +75,7 @@ def frame_rows(dets, rep, start: int, end: int, conf: float, align_tol: float) -
 
 
 def classify_unresolved(rows: list[dict]) -> str:
-    """Why did a labeled shot never arm? Arming needs >= 2 (descent_min_frames)
+    """Why did a labeled shot never arm? Arming needs >= 2 (descent_min_s at 30 fps)
     confirmed, aligned, above-rim, non-ascending observations."""
     raw_above = [r for r in rows if r.get("raw_confident") and r.get("raw_ry", 9) < 0
                  and abs(r.get("raw_rx", 9)) <= 1.0]
@@ -110,8 +110,9 @@ def main() -> int:
             print(f"[cache-only] no detection cache for {clip}; stopping")
             return 2
         dets = ev.load_detections(path, config)
-        rep = ev.replay(dets, config)
-        score = ev.score_clip(clip, shots, rep, 0.6, 6)
+        fps = ev.clip_fps(path)
+        rep = ev.replay(dets, config, fps=fps)
+        score = ev.score_clip(clip, shots, rep, 0.6, 6, fps)
         matched = {id(c.result): c for c in score.checks if c.result is not None}
 
         for r in rep.results:

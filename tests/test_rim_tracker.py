@@ -5,6 +5,28 @@ from shotvision.detection.detector import BALL, HOOP, Detection
 from shotvision.shot_logic.rim_tracker import RimTracker
 
 
+# The config is in seconds; these tests are written in frames at the default
+# 30 fps, so convert frame counts to seconds here.
+_FRAME_TO_SECONDS_KEYS = {
+    "descent_min_frames": "descent_min_s",
+    "occlusion_grace_frames": "occlusion_grace_s",
+    "rim_occlusion_grace_frames": "rim_occlusion_grace_s",
+    "shot_timeout_frames": "shot_timeout_s",
+    "prearm_max_missed_frames": "prearm_max_missed_s",
+    "rim_lost_grace_frames": "rim_lost_grace_s",
+}
+
+
+def _seconds_kwargs(frame_kwargs):
+    out = {}
+    for key, value in frame_kwargs.items():
+        if key in _FRAME_TO_SECONDS_KEYS:
+            out[_FRAME_TO_SECONDS_KEYS[key]] = value / 30
+        elif key != "trajectory_buffer_len":
+            out[key] = value
+    return out
+
+
 def _model_config(rim_conf=0.6):
     return ModelConfig(rim_conf=rim_conf)
 
@@ -17,7 +39,7 @@ def _shot_logic_config(**overrides):
         rim_size_jump_max_ratio=1.6,
     )
     base.update(overrides)
-    return ShotLogicConfig(**base)
+    return ShotLogicConfig(**_seconds_kwargs(base))
 
 
 def _hoop(bbox, conf=0.9):

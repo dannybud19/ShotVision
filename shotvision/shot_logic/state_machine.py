@@ -11,7 +11,7 @@ thin calibrations — the ball can be occluded or simply not detected while
 passing through the rim, and we still recover the crossing.
 
 The crossing x is estimated with `_fit_cross_x`: a least-squares line over the
-last few *confirmed* observations (`_CROSSING_FIT_WINDOW`), not just the two
+last few *confirmed* observations (`crossing_fit_window_s`), not just the two
 points immediately bracketing the crossing. With exactly 2 points this is
 identical to straight-line interpolation; with more, it uses the shape of the
 approach instead of trusting a single potentially-noisy endpoint (a bbox
@@ -24,7 +24,7 @@ window does.
 
 Flow (per ball observation fed in frame by frame):
   IDLE  -> ARMED : ball above the rim, roughly aligned horizontally, and
-                    descending for `descent_min_frames` in a row. (An earlier
+                    descending for `descent_min_s` in a row. (An earlier
                     variant also armed from in-band detections to work around
                     the ball never being seen above the rim; that turned out
                     to be ByteTrack dropping the fast ball — see
@@ -37,9 +37,9 @@ Flow (per ball observation fed in frame by frame):
                     crossing inside it (in-and-out), the whole ball reaches
                     below the rim without a valid through-crossing, or the
                     shot never resolves within
-                    `shot_timeout_frames` / an `occlusion_grace_frames` gap.
+                    `shot_timeout_s` / an `occlusion_grace_s` gap.
 
-A brief net/hand occlusion (missing detections up to `occlusion_grace_frames`)
+A brief net/hand occlusion (missing detections up to `occlusion_grace_s`)
 does not fail a shot and does not break crossing detection — the segment simply
 spans the gap. Works identically for netted and net-less rims.
 """
@@ -49,7 +49,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from shotvision.config.settings import ShotLogicConfig
+from shotvision.config.settings import REFERENCE_FPS, ShotLogicConfig, to_frames
 from shotvision.shot_logic.rim import RimRegion
 
 # Small pixel tolerance so per-frame detection jitter doesn't reset the
@@ -60,12 +60,12 @@ _DESCENT_JITTER_PX = 3.0
 # diagnostics (both detected positions and None occlusion frames).
 _TRACE_LEN = 8
 
-# How many recent *confirmed* observations to use when estimating where the
-# ball's path crosses the rim line. More than 2 points lets the estimate use
-# the shape of the approach instead of a single fragile 2-point straight
-# line across a detection gap; naturally degrades to a 2-point line when
-# fewer points are available (e.g. right after arming).
-_CROSSING_FIT_WINDOW = 4
+# ShotLogicConfig.crossing_fit_window_s sets how many recent *confirmed*
+# observations estimate where the ball's path crosses the rim line (4 at
+# 30 fps). More than 2 points lets the estimate use the shape of the approach
+# instead of a single fragile 2-point straight line across a detection gap;
+# it naturally degrades to a 2-point line when fewer points are available
+# (e.g. right after arming).
 
 
 @dataclass
@@ -163,9 +163,18 @@ class ShotResult:
 
 
 class ShotStateMachine:
-    def __init__(self, rim: RimRegion, config: ShotLogicConfig):
+    def __init__(self, rim: RimRegion, config: ShotLogicConfig, fps: float = REFERENCE_FPS):
         self.rim = rim
         self.config = config
+        # Every duration in ShotLogicConfig is in seconds; the logic below
+        # counts frames, so convert once with the source's fps.
+        self.fps = fps
+        self.descent_min_frames = to_frames(config.descent_min_s, fps)
+        self.prearm_max_missed_frames = to_frames(config.prearm_max_missed_s, fps)
+        self.occlusion_grace_frames = to_frames(config.occlusion_grace_s, fps)
+        self.rim_occlusion_grace_frames = to_frames(config.rim_occlusion_grace_s, fps)
+        self.shot_timeout_frames = to_frames(config.shot_timeout_s, fps)
+        self.crossing_fit_window = max(2, to_frames(config.crossing_fit_window_s, fps))
         self.state = ShotState.IDLE
         self._reset_prearm()
         self._reset_armed()
@@ -181,7 +190,7 @@ class ShotStateMachine:
         # Rolling window of confirmed observations made so far this armed
         # shot (most recent last), used both as "the previous point" for the
         # crossing trigger and as the fit window for _fit_cross_x.
-        self._recent: deque[BallObservation] = deque(maxlen=_CROSSING_FIT_WINDOW)
+        self._recent: deque[BallObservation] = deque(maxlen=self.crossing_fit_window)
         self._frames_since_detection = 0
         self._frames_in_state = 0
         self._armed_track_id: int | None = None
@@ -208,7 +217,7 @@ class ShotStateMachine:
             # streak (measured: it blocked arming on real makes); a longer
             # gap still does.
             self._prearm_missed += 1
-            if self._prearm_missed > self.config.prearm_max_missed_frames:
+            if self._prearm_missed > self.prearm_max_missed_frames:
                 self._reset_prearm()
             return None
 
@@ -221,7 +230,7 @@ class ShotStateMachine:
                 self._prearm_streak = 1
             self._prearm_last_y = y
 
-            if self._prearm_streak >= self.config.descent_min_frames:
+            if self._prearm_streak >= self.descent_min_frames:
                 self._reset_prearm()
                 self._reset_armed()
                 self._armed_track_id = obs.track_id
@@ -251,8 +260,8 @@ class ShotStateMachine:
             rim = self.rim
             rim_h = rim.outer_bottom - rim.outer_top
             if abs(last.x - rim.center_x) <= rim.outer_width and last.y >= rim.outer_top - rim_h:
-                return self.config.rim_occlusion_grace_frames
-        return self.config.occlusion_grace_frames
+                return self.rim_occlusion_grace_frames
+        return self.occlusion_grace_frames
 
     def _update_armed(self, obs: BallObservation | None, frame_idx: int) -> ShotResult | None:
         if (
@@ -272,7 +281,7 @@ class ShotStateMachine:
             self._frames_since_detection += 1
             if self._frames_since_detection > self._occlusion_grace():
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_OCCLUSION_GAP)
-            if self._frames_in_state > self.config.shot_timeout_frames:
+            if self._frames_in_state > self.shot_timeout_frames:
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)
             return None
 
@@ -281,7 +290,7 @@ class ShotStateMachine:
             # The followed ball is still there (e.g. faintly through the net),
             # so the shot isn't lost — but a low-confidence box is never
             # evidence for a crossing or a make.
-            if self._frames_in_state > self.config.shot_timeout_frames:
+            if self._frames_in_state > self.shot_timeout_frames:
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_OCCLUDED)
             return None
         x, y = obs.center
@@ -322,7 +331,7 @@ class ShotStateMachine:
                 return self._resolve(ShotOutcome.MAKE, frame_idx, ResolutionReason.MAKE_CONFIRMED)
             return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BELOW_WITHOUT_INNER)
 
-        if self._frames_in_state > self.config.shot_timeout_frames:
+        if self._frames_in_state > self.shot_timeout_frames:
             return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_TIMEOUT_ABOVE)
 
         self._recent.append(obs)

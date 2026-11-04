@@ -18,20 +18,23 @@ Association rules, per frame (all thresholds in TrackerConfig):
      clip). A ball in play doesn't sit still that long.
   2. If a ball is being followed, predict where it should be now from its
      recent velocity and accept the nearest candidate inside a gate around
-     that prediction (gate grows with frames since last seen).
+     that prediction (gate grows with time since last seen).
   3. A candidate outside the gate is accepted only if it is confident and
      the followed ball was itself weak, or has been unseen for
-     switch_stale_frames (longer than a normal motion-blur gap at the rim) — otherwise a shooter's
+     switch_stale_s (longer than a normal motion-blur gap at the rim) — otherwise a shooter's
      head (conf ~0.2) a few ball-widths away can hijack the track mid-shot
      and fake a "ball below the rim", which is exactly what produced wrong
      MISS calls on measured footage.
-  4. After max_gap_frames without an accepted detection, re-acquire the most
+  4. After max_gap_s without an accepted detection, re-acquire the most
      confident candidate.
   5. If no confident detection was accepted, a *weak* one (track_conf <= conf
      < the confirmation threshold) may continue the followed ball — only
      inside a tighter gate around the prediction and at a consistent size.
      It is marked `weak=True`; the state machine uses it to keep an armed
      shot alive (the ball faintly visible through the net) and nothing else.
+
+All durations are configured in seconds and converted to frames with the
+source's fps (`fps` argument; 30 by default, the rate everything was tuned at).
 """
 from __future__ import annotations
 
@@ -39,19 +42,19 @@ import math
 from collections import deque
 from dataclasses import dataclass
 
-from shotvision.config.settings import TrackerConfig
+from shotvision.config.settings import REFERENCE_FPS, TrackerConfig, per_frame, to_frames
 from shotvision.detection.detector import BALL, Detection, Detector
 from shotvision.shot_logic.state_machine import BallObservation
 
-# Velocity is only estimated from two accepted points this close in time.
-# (3 was too short: after a short blur gap there was no velocity, and the
-# no-velocity fallback gate grew to ~400px — wide enough to admit a head.)
-_VELOCITY_MAX_SPAN_FRAMES = 8
-
-# A followed ball's strength is its best confident sighting within this many
-# frames: a ball seen at 0.8 that blurs to 0.2 at the rim is still a strong
-# track, not one a passing false positive may take over.
-_STRENGTH_WINDOW_FRAMES = 10
+# TrackerConfig.velocity_max_span_s: velocity is only estimated from two
+# accepted points this close in time. (3 frames was too short: after a short
+# blur gap there was no velocity, and the no-velocity fallback gate grew to
+# ~400px — wide enough to admit a head.)
+#
+# TrackerConfig.strength_window_s: a followed ball's strength is its best
+# confident sighting within this window: a ball seen at 0.8 that blurs to 0.2
+# at the rim is still a strong track, not one a passing false positive may
+# take over.
 
 
 @dataclass
@@ -69,9 +72,16 @@ def _width(d: Detection) -> float:
 
 
 class BallTracker:
-    def __init__(self, detector: Detector, tracker_config: TrackerConfig, buffer_len: int = 60):
+    def __init__(
+        self,
+        detector: Detector,
+        tracker_config: TrackerConfig,
+        buffer_len: int = 60,
+        fps: float = REFERENCE_FPS,
+    ):
         self.detector = detector
         self.cfg = tracker_config
+        self.fps = fps
         self.trajectory: deque[TrajectoryPoint] = deque(maxlen=buffer_len)
         self.frame_idx = 0
         # Identity of the followed ball: bumped whenever the tracker abandons
@@ -113,12 +123,18 @@ class BallTracker:
 
     # --- association helpers -------------------------------------------
 
+    def _frames(self, seconds: float) -> int:
+        return to_frames(seconds, getattr(self, "fps", REFERENCE_FPS))
+
+    def _per_frame(self, rate_per_s: float) -> float:
+        return per_frame(rate_per_s, getattr(self, "fps", REFERENCE_FPS))
+
     def _last_point(self) -> TrajectoryPoint | None:
         """The last accepted position, if recent enough to associate with."""
         if not self.trajectory:
             return None
         last = self.trajectory[-1]
-        if self.frame_idx - last.frame_idx > self.cfg.max_gap_frames:
+        if self.frame_idx - last.frame_idx > self._frames(self.cfg.max_gap_s):
             return None
         return last
 
@@ -127,7 +143,7 @@ class BallTracker:
             return None
         p0, p1 = self.trajectory[-2], self.trajectory[-1]
         span = p1.frame_idx - p0.frame_idx
-        if span <= 0 or span > _VELOCITY_MAX_SPAN_FRAMES:
+        if span <= 0 or span > self._frames(self.cfg.velocity_max_span_s):
             return None
         return ((p1.x - p0.x) / span, (p1.y - p0.y) / span)
 
@@ -136,12 +152,12 @@ class BallTracker:
         r = self.cfg.stationary_radius_widths * _width(d)
         frames = [f for f, hx, hy in self._candidate_history if math.hypot(hx - x, hy - y) <= r]
         return (
-            len(frames) >= self.cfg.stationary_min_hits
-            and frames[-1] - frames[0] >= self.cfg.stationary_min_span_frames
+            len(frames) >= self._frames(self.cfg.stationary_min_hits_s)
+            and frames[-1] - frames[0] >= self._frames(self.cfg.stationary_min_span_s)
         )
 
     def _record_candidates(self, candidates: list[Detection]) -> None:
-        horizon = self.frame_idx - self.cfg.stationary_window_frames
+        horizon = self.frame_idx - self._frames(self.cfg.stationary_window_s)
         while self._candidate_history and self._candidate_history[0][0] < horizon:
             self._candidate_history.popleft()
         for d in candidates:
@@ -167,10 +183,10 @@ class BallTracker:
             # the ball in the net at conf 0.72 was rejected for 7 frames).
             predicted = (last.x + velocity[0] * elapsed, last.y + velocity[1] * elapsed)
             anchors = [predicted, (last.x, last.y)]
-            gate_widths = self.cfg.gate_base_widths + self.cfg.gate_per_frame_widths * elapsed
+            gate_widths = self.cfg.gate_base_widths + self._per_frame(self.cfg.gate_growth_widths_per_s) * elapsed
         else:
             anchors = [(last.x, last.y)]
-            gate_widths = self.cfg.max_jump_ball_widths * elapsed
+            gate_widths = self._per_frame(self.cfg.max_jump_widths_per_s) * elapsed
 
         # Size the gate by the followed ball, not the candidate: a false
         # positive (a head) is often bigger than the ball and would widen its
@@ -194,12 +210,12 @@ class BallTracker:
                 p.conf for p in self.trajectory
                 if p.track_id == last.track_id
                 and p.conf >= self.detector.conf
-                and last.frame_idx - p.frame_idx <= _STRENGTH_WINDOW_FRAMES
+                and last.frame_idx - p.frame_idx <= self._frames(self.cfg.strength_window_s)
             ),
             default=0.0,
         )
         followed_is_stale_or_weak = (
-            elapsed >= self.cfg.switch_stale_frames or followed_conf < self.cfg.switch_weak_conf
+            elapsed >= self._frames(self.cfg.switch_stale_s) or followed_conf < self.cfg.switch_weak_conf
         )
         if strong.conf >= self.cfg.switch_strong_conf and followed_is_stale_or_weak:
             return strong, True
@@ -218,7 +234,7 @@ class BallTracker:
         anchor = (last.x + velocity[0] * elapsed, last.y + velocity[1] * elapsed)
         gate = (
             self.cfg.weak_gate_scale
-            * (self.cfg.gate_base_widths + self.cfg.gate_per_frame_widths * elapsed)
+            * (self.cfg.gate_base_widths + self._per_frame(self.cfg.gate_growth_widths_per_s) * elapsed)
             * last.width
         )
         ratio = self.cfg.weak_size_ratio

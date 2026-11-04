@@ -11,6 +11,28 @@ from shotvision.shot_logic.state_machine import (
 )
 
 
+# The config is in seconds; these tests are written in frames at the default
+# 30 fps, so convert frame counts to seconds here.
+_FRAME_TO_SECONDS_KEYS = {
+    "descent_min_frames": "descent_min_s",
+    "occlusion_grace_frames": "occlusion_grace_s",
+    "rim_occlusion_grace_frames": "rim_occlusion_grace_s",
+    "shot_timeout_frames": "shot_timeout_s",
+    "prearm_max_missed_frames": "prearm_max_missed_s",
+    "rim_lost_grace_frames": "rim_lost_grace_s",
+}
+
+
+def _seconds_kwargs(frame_kwargs):
+    out = {}
+    for key, value in frame_kwargs.items():
+        if key in _FRAME_TO_SECONDS_KEYS:
+            out[_FRAME_TO_SECONDS_KEYS[key]] = value / 30
+        elif key != "trajectory_buffer_len":
+            out[key] = value
+    return out
+
+
 def _rim():
     # outer box x:100..200 (width 100), y:50..70; inner shrunk by 15% -> 115..185
     return RimRegion.from_points([(100, 50), (200, 50), (100, 70), (200, 70)], inner_bound_shrink=0.15)
@@ -26,7 +48,7 @@ def _config(**overrides):
         trajectory_buffer_len=60,
     )
     base.update(overrides)
-    return ShotLogicConfig(**base)
+    return ShotLogicConfig(**_seconds_kwargs(base))
 
 
 def _feed(sm, positions, start_frame=0):

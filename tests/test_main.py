@@ -14,11 +14,11 @@ def test_build_cli_overrides_with_source_only():
 
 def test_build_cli_overrides_with_set_flags():
     overrides = main_module.build_cli_overrides(
-        _args(set_=["model.conf=0.5", "shot_logic.shot_timeout_frames=120"])
+        _args(set_=["model.conf=0.5", "shot_logic.shot_timeout_s=4.0"])
     )
     assert overrides == {
         "model.conf": "0.5",
-        "shot_logic.shot_timeout_frames": "120",
+        "shot_logic.shot_timeout_s": "4.0",
     }
 
 

@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from shotvision.capture.source import FrameSource
-from shotvision.config.settings import ShotLogicConfig, load_config
+from shotvision.config.settings import REFERENCE_FPS, ShotLogicConfig, load_config, to_frames
 from shotvision.detection.detector import Detector
 from shotvision.detection.device import log_device_choice, resolve_device
 from shotvision.shot_logic.rim import RimRegion
@@ -119,7 +119,7 @@ def collect_frames(source: str, config=None, max_frames: int | None = None) -> C
     log_device_choice(device, reason)
 
     detector = Detector(cfg.model, device)
-    ball_tracker = BallTracker(detector, cfg.tracker, cfg.shot_logic.trajectory_buffer_len)
+    ball_tracker = BallTracker(detector, cfg.tracker, to_frames(cfg.shot_logic.trajectory_buffer_s, REFERENCE_FPS))
     from shotvision.shot_logic.rim_tracker import RimTracker
 
     rim_tracker = RimTracker(cfg.model, cfg.shot_logic)
@@ -330,7 +330,7 @@ def simulate_baseline_arms(data: ClipData) -> list[int]:
                 streak = 0
                 last_y = None
 
-        if streak >= cfg.descent_min_frames:
+        if streak >= to_frames(cfg.descent_min_s, REFERENCE_FPS):
             arms.append(rec.frame_idx)
             streak = 0
             last_y = None
@@ -373,7 +373,7 @@ def simulate_inband_arms(data: ClipData) -> list[int]:
                 streak = 0
                 last_y = None
 
-        if streak >= cfg.descent_min_frames:
+        if streak >= to_frames(cfg.descent_min_s, REFERENCE_FPS):
             arms.append(rec.frame_idx)
             streak = 0
             last_y = None

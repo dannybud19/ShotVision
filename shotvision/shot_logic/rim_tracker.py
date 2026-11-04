@@ -15,7 +15,7 @@ cost to track the rim alongside the ball.
 """
 from __future__ import annotations
 
-from shotvision.config.settings import ModelConfig, ShotLogicConfig
+from shotvision.config.settings import REFERENCE_FPS, ModelConfig, ShotLogicConfig, ema_alpha_at, to_frames
 from shotvision.detection.detector import HOOP, Detection
 from shotvision.shot_logic.rim import RimRegion
 
@@ -28,10 +28,15 @@ def _bbox_area(bbox: Bbox) -> float:
 
 
 class RimTracker:
-    def __init__(self, model_config: ModelConfig, shot_logic_config: ShotLogicConfig):
+    def __init__(
+        self,
+        model_config: ModelConfig,
+        shot_logic_config: ShotLogicConfig,
+        fps: float = REFERENCE_FPS,
+    ):
         self.rim_conf = model_config.rim_conf
-        self.ema_alpha = shot_logic_config.rim_ema_alpha
-        self.lost_grace_frames = shot_logic_config.rim_lost_grace_frames
+        self.ema_alpha = ema_alpha_at(shot_logic_config.rim_ema_alpha, fps)
+        self.lost_grace_frames = to_frames(shot_logic_config.rim_lost_grace_s, fps)
         self.size_jump_max_ratio = shot_logic_config.rim_size_jump_max_ratio
         self.inner_bound_shrink = shot_logic_config.inner_bound_shrink
 
@@ -42,7 +47,7 @@ class RimTracker:
     def update(self, detections: list[Detection]) -> RimRegion | None:
         """Feed one frame's full detections list. Returns the current best
         rim estimate, or None if never yet acquired (or lost for longer
-        than `rim_lost_grace_frames`)."""
+        than `rim_lost_grace_s`)."""
         hoop_dets = [
             d for d in detections if d.class_name == HOOP and d.conf >= self.rim_conf
         ]

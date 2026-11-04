@@ -11,9 +11,10 @@ def test_load_config_defaults():
     assert cfg.model.track_conf == 0.03
     assert cfg.model.track_conf < cfg.model.conf  # recovery floor stays below confirmation bar
     assert cfg.model.rim_conf == 0.60
-    assert cfg.shot_logic.occlusion_grace_frames == 12
+    assert cfg.shot_logic.occlusion_grace_s == 0.4
     assert cfg.shot_logic.rim_ema_alpha == 0.25
-    assert cfg.shot_logic.rim_lost_grace_frames == 30
+    assert cfg.shot_logic.rim_lost_grace_s == 1.0
+    assert cfg.camera.fps == 0.0
     assert cfg.shot_logic.rim_size_jump_max_ratio == 1.6
     assert not hasattr(cfg, "calibration")  # manual calibration fully removed
 
@@ -23,14 +24,14 @@ def test_cli_overrides_apply_and_coerce_types():
         cli_overrides={
             "camera.source": "sample_clips/test.mp4",
             "model.conf": "0.5",
-            "shot_logic.shot_timeout_frames": "120",
+            "shot_logic.shot_timeout_s": "4.0",
         }
     )
     assert cfg.camera.source == "sample_clips/test.mp4"
     assert cfg.model.conf == 0.5
     assert isinstance(cfg.model.conf, float)
-    assert cfg.shot_logic.shot_timeout_frames == 120
-    assert isinstance(cfg.shot_logic.shot_timeout_frames, int)
+    assert cfg.shot_logic.shot_timeout_s == 4.0
+    assert isinstance(cfg.shot_logic.shot_timeout_s, float)
 
 
 def test_override_file_merges_over_defaults(tmp_path):

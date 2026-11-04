@@ -81,7 +81,7 @@ Any config value can be overridden from the CLI without editing
 `config/default.json`:
 
 ```bash
-python -m shotvision.main --source clip.mp4 --set model.conf=0.5 --set shot_logic.shot_timeout_frames=120
+python -m shotvision.main --source clip.mp4 --set model.conf=0.5 --set shot_logic.shot_timeout_s=4.0
 ```
 
 Or point at a JSON file of overrides with `--config path/to/overrides.json`.
@@ -160,7 +160,7 @@ Association rules (thresholds in the `tracker` config section):
   is not the ball in play.
 - **Guarded switching.** The tracker jumps to a confident detection outside the
   gate only if the followed ball has been weak recently or unseen for
-  `switch_stale_frames`. A shooter's dark hair is detected as a ball at up to
+  `switch_stale_s`. A shooter's dark hair is detected as a ball at up to
   conf 0.69 on real footage and would otherwise take over while the real ball
   blurs at the rim. Each switch starts a new track identity, and a shot only
   scores the identity it started on.
@@ -181,9 +181,9 @@ extra inference cost) and turns a raw hoop box into a stable `RimRegion`:
 - **EMA smoothing** (`shot_logic.rim_ema_alpha`, default 0.25) damps
   per-frame jitter while still tracking real camera motion — several of the
   sample clips pan or zoom, so a one-time snapshot wouldn't stay correct.
-- **Occlusion tolerance** (`shot_logic.rim_lost_grace_frames`, default 30):
+- **Occlusion tolerance** (`shot_logic.rim_lost_grace_s`, default 1.0 s):
   a frame with no hoop detection keeps the last good rim rather than
-  failing immediately; beyond that many consecutive misses, the rim is
+  failing immediately; beyond that long without one, the rim is
   considered lost and reacquired fresh from the next confident reading.
 - **Size-jump sanity gate** (`shot_logic.rim_size_jump_max_ratio`, default
   1.6×): a real hoop's on-screen size changes gradually with camera motion,
@@ -205,6 +205,15 @@ a make requires the ball to pass through the middle of the rim, not clip an
 edge. This is deliberately false-positive-averse: rim-outs and near-misses
 are worse to miscount than a shot that goes uncounted.
 
+## Timing and frame rate
+
+Frame-rate independence: every duration in `shotvision/config/default.json` is in
+seconds and every rate is per second (`*_s`, `*_per_s`). Components convert
+them to frames with the source's actual fps (`camera.fps`, 0 = use what the
+file or camera reports). The values were tuned at 30 fps, and at 30 fps they
+convert back to exactly the tuned frame counts. `rim_ema_alpha` is a per-frame
+factor as tuned at 30 fps and is rescaled to keep the same time constant.
+
 ## Make/miss logic
 
 See `shotvision/shot_logic/state_machine.py` for the full logic and
@@ -214,7 +223,7 @@ net occlusion, timeouts, misaligned motion).
 
 Summary: a shot arms when the ball is seen above the rim, roughly aligned
 with it horizontally (`align_tolerance_ratio`), and descending for
-`descent_min_frames` frames; one missed frame doesn't reset that count. Scoring is
+`descent_min_s` (2 frames at 30 fps); one missed frame doesn't reset that count. Scoring is
 then **trajectory-crossing based**: we track the ball's path and test whether
 the *segment* between two consecutive observed positions crosses the scoring
 line, and where. The model's hoop box spans the rim *and the net*, so the line
@@ -240,8 +249,8 @@ band; the crossing approach scores those makes correctly.)
 
 A brief gap in ball detection (hand at release, ball hidden in the net)
 doesn't fail a shot by itself — only a gap longer than
-`shot_logic.occlusion_grace_frames` (12) does, or `rim_occlusion_grace_frames`
-(24) when the ball was last seen at the hoop, since a ball in the net is hidden
+`shot_logic.occlusion_grace_s` (0.4 s) does, or `rim_occlusion_grace_s`
+(0.8 s) when the ball was last seen at the hoop, since a ball in the net is hidden
 for 11-19 frames on measured footage. The crossing test spans such gaps.
 It doesn't look at the net at all, so it behaves the same for netted and
 net-less rims.

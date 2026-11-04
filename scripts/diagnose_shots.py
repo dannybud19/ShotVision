@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shotvision.capture.source import FrameSource
-from shotvision.config.settings import load_config
+from shotvision.config.settings import REFERENCE_FPS, load_config, to_frames
 from shotvision.detection.detector import Detector
 from shotvision.detection.device import log_device_choice, resolve_device
 from shotvision.shot_logic.rim import RimRegion
@@ -68,7 +68,7 @@ def main() -> None:
     detector = Detector(config.model, device)
     print(f"Weights: {detector.weights_path} (has_hoop_class={detector.has_hoop_class})")
 
-    ball_tracker = BallTracker(detector, config.tracker, config.shot_logic.trajectory_buffer_len)
+    ball_tracker = BallTracker(detector, config.tracker, to_frames(config.shot_logic.trajectory_buffer_s, REFERENCE_FPS))
     rim_tracker = RimTracker(config.model, config.shot_logic)
     state_machine: ShotStateMachine | None = None
 
@@ -82,9 +82,9 @@ def main() -> None:
     # `results` only holds *resolved* ShotResults. But shot_logic/state_machine.py
     # `_update_idle` resets the pre-arm descent streak to zero on ANY single
     # missed ball detection (no occlusion-grace tolerance there, unlike the
-    # armed phase, which tolerates `occlusion_grace_frames` gaps). At this
+    # armed phase, which tolerates `occlusion_grace_s` gaps). At this
     # project's real ball-detection rates, a genuine shot attempt can easily
-    # never accumulate `descent_min_frames` consecutive detected+aligned+above
+    # never accumulate `descent_min_s` consecutive detected+aligned+above
     # -rim frames, so it never reaches ShotState.ARMED and produces ZERO
     # ShotResults — silently invisible rather than an explicit MISS.
     #
@@ -98,7 +98,7 @@ def main() -> None:
     # candidate frames to plausibly be a real attempt, but with no ARM
     # transition inside it, is flagged as a likely never-armed shot.
     CANDIDATE_EPISODE_GAP = 20  # frames; groups sparse candidate detections into one episode
-    MIN_EPISODE_CANDIDATES = 2  # matches default descent_min_frames — the minimum a real arm needs
+    MIN_EPISODE_CANDIDATES = 2  # matches default descent_min_s at 30 fps — the minimum a real arm needs
     arm_frames: list[int] = []
     candidate_frames: list[tuple[int, float, float]] = []  # (frame_idx, x, y)
 
@@ -219,7 +219,7 @@ def main() -> None:
     def _max_consecutive_run(frames: list[int]) -> int:
         """Longest run of frame indices with no gap at all (diff==1) — this is
         exactly what the real pre-arm streak needs consecutively; if this
-        never reaches descent_min_frames within an episode, that alone
+        never reaches descent_min_s within an episode, that alone
         explains why it never armed."""
         best = run = 1
         for a, b in zip(frames, frames[1:]):
@@ -249,7 +249,7 @@ def main() -> None:
                 f"  frames {ep['start']:>5}-{ep['end']:<5} "
                 f"candidate_frames={len(ep['frames']):<3} "
                 f"longest_consecutive_run={run} "
-                f"(needs {config.shot_logic.descent_min_frames} consecutive to arm)"
+                f"(needs {to_frames(config.shot_logic.descent_min_s, REFERENCE_FPS)} consecutive to arm at 30 fps)"
             )
     print(
         f"\nTotal candidate episodes: {len(episodes)}   "
