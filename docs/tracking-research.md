@@ -1,137 +1,295 @@
-> **Superseded 2026-11-03.** The root cause of the missing makes was ByteTrack (`model.track()`) dropping the fast-moving ball above the rim, not the arming or crossing logic analysed here. See the 2026-11-03 entry in `docs/PROJECT_LOG.md`. Kept for the record.
+# Tracking Research: unblocking Phase 1 make/miss
 
-# Tracking Research: Why Real Makes Are Being Missed
+Rewritten 2026-11-04. Earlier versions, from 2026-07-24 and 2026-08-12, diagnosed an arming or scoring bug. That diagnosis was later shown to be a downstream effect of ByteTrack dropping the fast ball, and it is superseded. They remain in git history (e.g. `git show 444544e:docs/tracking-research.md`).
 
-## Section 1: Measured diagnosis
-
-**Real makes are being silently dropped — not misclassified.** This is the headline finding, and it changes what kind of fix is worth pursuing.
-
-This was measured by running `scripts/diagnose_shots.py` (extended this session to also flag "never-armed candidate episodes") against three ground-truth-labeled clips whose filenames encode the expected outcome — a convention confirmed in `sample_clips/SOURCES.md`.
-
-| Clip | Expected make/miss | Resolved shots | Resolution reasons | Missing (never armed) |
-|---|---|---|---|---|
-| chonyy_one_score_one_miss.mp4 | 1/1 | 1 | miss_occlusion_gap×1 | 1 |
-| chonyy_two_score_two_miss.mp4 | 2/2 | 2 | miss_below_without_inner×2 | 2 |
-| chonyy_two_score_three_miss.mp4 | 2/3 | 3 | miss_below_without_inner×2, miss_occlusion_gap×1 | 2 |
-| **Total** | **5 makes / 6 misses / 11** | **6** | 4× below_without_inner, 2× occlusion_gap | **5** |
-
-### Key facts
-
-- Of 11 real shot attempts across the three clips, only 6 ever produced a `ShotResult` at all. The count of missing (never-`ShotResult`'d) attempts equals the count of expected makes **exactly**, in all three clips individually.
-- Every one of the 6 resolved shots came back MISS. Zero ever reached a valid inner-gate crossing (`entered_inner=True`). Zero instances of `MISS_BOUNCE_UP` anywhere in the data.
-- The state machine's own state (`ShotState.IDLE` vs `ARMED`) was independently observed per frame. The extension grouped candidate frames (ball detected, above rim, aligned) into episodes and found **zero** cases of "a 2+ frame streak broken by a single dropped frame." In every missing attempt there were essentially 0-1 qualifying frames in the entire approach window — not a near-miss streak interrupted by a gap.
-- Ball detection rate on this footage: 19.6%, 24.6%, 23.1% per clip — consistent with (and somewhat worse than in variance) the project's documented ~11% baseline on other footage.
-- Two of the three clips share underlying footage: `two_score_three_miss` appears to be the `two_score_two_miss` recording with one extra miss appended — traces at frames 86 and 191 are byte-identical between them. **Sample-size caveat:** this dataset is effectively **two distinct source recordings**, not three independent samples.
-- Manual trace review of 2 of the 6 resolved-MISS shots showed clear rim-out drift (ball x-position drifting from 597→584, outside the rim's outer box, while descending through the rim band) — genuine misses, not misclassifications. The other 4 resolved shots were **not** manually eyeballed frame-by-frame; the make/miss mapping rests on the exact count correlation plus this partial spot-check, not a full manual video review of all 11 shots.
-
-### Conclusion
-
-The data confirms the "ball detection is too sparse during the shot's approach to the rim to ever arm the state machine" failure mode as **dominant and severe** (not a mild single-frame-gap issue), and finds **zero evidence** for a separate hypothesis that had been raised from code-reading alone — a "bounce-up" check that can overturn an already-confirmed make. That second bug is real by code inspection but did not occur in this measured data, because no shot ever got far enough to be at risk of it.
+**Bottom line:** no new model is justified by the evidence today, and neither is more threshold tuning on third-party clips. The measured failures are makes lost while the ball is invisible at the rim. Every logic change that would rescue them is make-favourable, and the 8 distinct labeled misses we have cannot show such a change is safe. The highest-value next step is **better input plus a real miss set**: film our own camera at 60 fps with a fast shutter, using the shot list in "Do this next".
 
 ---
 
-## Section 2: Per-repo findings
+## 1. Measured diagnosis
 
-For each repository: license status first (stated plainly), then relevance to this project's actual measured failure mode.
+### How it was measured
+`experiments/shot_diagnostics.py` replays the cached raw detections (`experiments/.cache/detections`; no model load with `--cache-only`) through the real `BallTracker`, `RimTracker` and `ShotStateMachine`, exactly as `scripts/evaluate.py` does. For each resolved shot it records:
+- the exit path;
+- the last 4 confirmed ball positions before resolution, in rim units: `rx` = offset from the hoop centre in hoop-box widths, `ry` = depth into the hoop box in box heights (0 = box top, 1 = box bottom);
+- the number of no-ball frames just before resolution;
+- the longest confirmed-ball gap while the shot was armed.
 
-### yastrebksv/TrackNet
+For every labeled shot it gets wrong, it prints a per-frame trace of the raw detection versus the followed ball versus the state, and names which layer lost the shot: detector, tracker or logic.
 
-Unofficial PyTorch implementation of TrackNet V1/V4 (arXiv 1907.03698 and 2409.14543). **No LICENSE file; GitHub API confirms `license: null` — unusable to reuse code as-is.** Architecture ideas are still fair to learn from.
+Data: 11 third-party clips, 75 labeled shots (65 makes, 10 misses), labels in `sample_clips/labels.json`. **The data is less independent than it looks:**
+- `chonyy_two_score_three_miss` contains the 4 shots of `chonyy_two_score_two_miss`.
+- `chonyy_one_score_one_miss`'s miss is near-identical to one of them.
 
-Multi-frame (3-consecutive-frame input) Gaussian heatmap regression for small/fast/occluded ball detection — architecturally plausible fit for this project's sparse-detection problem (that's exactly what it was built for), but only ever validated on tennis/badminton against uniform court backgrounds, never against rim/net occlusion specifically. A boost here is plausible, not proven.
+That leaves about 71 distinct shots and **8 distinct misses (possibly 7)**.
 
-No custom CUDA kernels; standard conv ops throughout (MPS-compatible), but the reference code hardcodes `device='cuda'` with no fallback — a trivial one-line patch, not a structural blocker.
+### Results (baseline, current `main`)
 
-Original training used ~19,835 labeled frames across 10 tennis broadcasts. Fine-tuning cost for basketball is inferred from architecture/hyperparameters (VGG16-style encoder-decoder, `num_epochs=500` default in the reference script), since no hardware/time figures are documented — expect a non-trivial multi-hour-plus training investment on an M2. This is a reasoned estimate, not a verified one.
+| Exit path | Label | Got | Count |
+|---|---|---|---|
+| make_confirmed | MAKE | MAKE | 58 |
+| miss_below_without_inner | MISS | MISS | 8 |
+| miss_rim_out_sideways | MISS | MISS | 2 |
+| miss_occlusion_gap | MAKE | MISS | 1 (vt5 f2597) |
+| miss_occlusion_gap | (unmatched) | MISS | 1 (vt5 f3156: actually the f3104 make, resolved 27 frames after its label window, so the scorer counts it as unresolved plus a spurious shot) |
+| miss_rim_out_sideways | MAKE | MISS | 1 (lf_shot f600) |
+| any timeout path | — | — | **0** |
+| never armed | MAKE | — | 4 (vt5 f211, vt5 f1906, lf_alan f624, kyle f88) |
 
-Its 3-frame fixed sliding-window inference (no RNN/stateful memory) means running it only as a fallback during a state-machine-flagged shot window is architecturally sound, not a hack — it would just need a small buffer of prior frames before the window opens.
+- **All 10 labeled misses resolve with the ball in view.** They had 0 no-ball frames at resolution and were decided by a seen crossing outside the inner gate, or by the ball dropping below without one. The ball disappears only on makes.
+- **On the 58 counted makes, the longest gap in confirmed ball while armed** has a median of 5 frames and a max of 21. In 40 of the 58, low-confidence "weak" boxes carried the shot through the net.
 
-### NohanJoemon/Basketball-video-classification
+### The 7 failures, by cause
 
-**No LICENSE file; GitHub API confirms `license: null` — unusable to reuse code as-is.**
+| Shot | What the trace shows | Layer |
+|---|---|---|
+| vt5 f211 | The ball is confidently seen on its descent to `rx` 1.18-1.34 above the rim, just outside the arming alignment window (abs `rx` ≤ 1.0). It then vanishes for 7 frames (blur over the backboard) and reappears inside the band at `rx` −0.2, dropping through. It never armed. | Detector gap + arming window |
+| vt5 f1906 | The same pattern: one aligned, confident above-rim frame (2 are needed), then 10 frames with nothing. | Detector gap + arming rule |
+| vt5 f2597 | Armed. The ball is lost at the rim. The tracker weak-continues onto a stationary false positive under the hoop. The real ball reappears confidently inside the hoop as **a new track id**, and the state machine (by design, iteration 6) discards other identities, so the shot ends occlusion-gap MISS. | Tracker identity |
+| vt5 f3104 | Armed, last confirmed at the top of the hoop box inside the inner gate. It is never re-acquired on its identity after 1 weak frame, so the shot ends occlusion-gap MISS 25 frames later. | Detector gap (below the net) |
+| lf_shot f600 | Armed. The ball is invisible for 13 frames inside the rim/net, then reappears at `rx` −0.5. The fitted crossing (−0.45) falls outside the inner gate (abs `rx` ≤ 0.35), so it resolves MISS sideways. The pre-gap path pointed the other way, so the net or rim deflected it. Ambiguous in 2D. | Logic (ambiguous) |
+| lf_alan f624 | The ball enters from out of frame. 18 frames are missing, then 1 aligned above-rim frame, then it drops cleanly through. It never armed. | Framing + arming rule |
+| kyle f88 | A huge, close, blurred ball, never detected above the rim at any confidence. First seen already below. | Detector |
 
-Whole-frame VGG16 feature extraction at ~1fps + a dense sigmoid head, averaged across sampled frames (no ROI cropping, no temporal modeling) — trained on 2,194 clips (885 scoring / 1,309 non-scoring).
+### Your hypothesis, tested
+> "The ball isn't detected in the frames where it passes through the rim, so the miss-biased state machine times out and defaults to MISS."
 
-Structurally mismatched to this project's actual failure mode: it's designed to be invoked as a "second opinion when the primary logic times out," but this project's missing shots never reach a timeout state — they never leave `IDLE` in the first place, so a second-opinion-at-timeout hook would never fire for them.
+- **Half right.** Detection gaps at the rim are behind 6 of the 7 failures. Blur over the backboard and occlusion in or below the net cause them, and the measured gap lengths are 7-25 frames.
+- **The mechanism is wrong.**
+  - **0 shots resolve by timeout.**
+  - 4 of the 7 never arm at all. Those makes are silently uncounted, not scored as misses.
+  - 2 end through the occlusion grace (one of them because of a tracker identity switch).
+  - 1 is a geometric call on a net-deflected ball.
+- **Other parts of the summary are out of date.**
+  - The "~11% detection rate" dates from the ByteTrack era. Ball coverage is now 38-81% of frames per clip and about 76% inside make windows.
+  - The test count is now 111 passing, plus 2 that load the real checkpoint.
 
-A rim-cropped, temporally-aware lighter-weight variant (MobileNetV3/EfficientNet-Lite scale, few hundred to ~1000 labeled clips) is a more appropriate design than this repo's approach if pursued later, but doesn't address the measured failure mode as currently scoped.
+### Threshold tuning is exhausted on this data (measured)
+These single-knob sweeps ran through `scripts/evaluate.py --set` on all 75 labeled shots:
 
-### avishah3/AI-Basketball-Shot-Detection-Tracker
+| Change | Correct | False makes | Effect |
+|---|---|---|---|
+| baseline | 68/75 | 0 | |
+| `align_tolerance_ratio` 1.0 → 1.5 | 68 | 0 | +vt5 f1906, −lf_shot f272 (a make turns into a sideways miss because the crossing fit changes) |
+| `align_tolerance_ratio` → 2.0 | 69 | 0 | +f211, +f1906, −lf_shot f272 |
+| `descent_min_frames` 2 → 1 | 69 | 0 | +f1906, +lf_alan, −lf_shot f272 |
+| `prearm_max_missed_frames` 1 → 3 | 68 | 0 | no change (same 7 failures) |
+| `occlusion_grace_frames` 12 → 20 | 68 | 0 | no change |
+| `inner_bound_shrink` 0.15 → 0.05 | 66 | **2** | two real misses (aggie f66, lf_shot f959) become makes |
 
-**No LICENSE file, `license: null` — unusable to reuse code as-is** (note: this project's own default checkpoint `models/basketball_best.pt` was already sourced from this same repo per this project's README, with the license caveat already documented there).
+- Loosening arming wins one shot and loses another.
+- Widening the inner gate immediately produces false makes. **Two of the 8 distinct misses sit right at the gate edge** (`rx` 0.36-0.45 at the crossing).
+- The safety margin is thin, so "calibrate and tune thresholds" on these clips is not the answer either.
 
-Its make/miss scoring uses only the *first* ball point above the rim and *first* point below it (2-point interpolation) to fit a crossing line — this is weaker than this project's existing 4-point least-squares crossing fit already in `shot_logic/state_machine.py`. Not an upgrade.
+### One targeted logic change, measured
+`experiments/track_adopt_experiment.py` lets an armed shot adopt a new tracker identity, but only when two conditions hold:
+- the armed ball's last *confirmed* point was near the hoop;
+- the new observation is confirmed and inside the hoop region.
 
-### nvan21/Basketball-Shot-Detection
-
-**No LICENSE file, `license: null` — unusable to reuse code as-is.**
-
-Uses a 2nd-degree parabola fit over accumulated points, but requires ≥15 in-ROI trajectory samples to trigger its confidence check — degrades badly (not gracefully) under this project's actual sparse-detection failure mode, since 15 samples is far more than what's typically available. Its own documentation acknowledges a pure-2D depth-ambiguity limitation (can't distinguish a ball grazing the back rim from a clean make).
-
-### iamyb/shotcut
-
-**MIT licensed — confirmed directly from the repo's LICENSE file. Usable.**
-
-Stationary-camera ball/hoop interaction analysis for highlight extraction; no published algorithm detail beyond "trajectory + hoop interaction" was retrievable, so limited actionable detail despite being license-clear.
-
-### srz08/basketball-shot-analysis
-
-**No LICENSE file, `license: null` — unusable to reuse code as-is.**
-
-This repo is actually about shooting-form/biomechanics analysis (YOLO + MediaPipe pose), not make/miss scoring — the weakest reference for this project's actual problem.
-
-### Net-motion / pixel-disturbance signal
-
-No standalone open-source implementation found (none of the repos above implement it); appears in commercial patent literature only. Cited generically: patent literature describes hoop/net-movement detection combined with ball-in-ROI state to adjudicate makes — a known idea, not proprietary to any one source.
-
-Cheap and real-time-feasible (frame-differencing/optical-flow over a small fixed ROI, sub-millisecond, no model inference needed) but needs per-camera/per-setup calibration of the net region, and doesn't work on net-less rims (which this project explicitly supports per its own docstrings) — would need to be optional/gated, not required.
-
-Critically: it only helps *after* a shot is already being tracked near the rim — it does not address this project's measured failure mode (shots that never arm in the first place).
-
----
-
-## Section 3: Ranked recommendations
-
-**Update 3, real-pipeline post-apply validation — arming fixed, a second bug surfaced:** Patch 2 and Patch 3 (`experiments/proposed_state_machine_patches.md`) were applied to `shot_logic/state_machine.py` and re-run through the real pipeline (`scripts/diagnose_shots.py`, not the offline simulation) against all 3 ground-truth clips. **Arming is fully fixed: 11 of 11 real attempts now produce a `ShotResult`, up from 6 of 11 — the never-armed problem is gone, and the original 6 shots' outcomes/reasons are unchanged (no regression).** However, **all 11 resolved shots come back MISS**, all 5 newly-rescued shots via `MISS_BELOW_WITHOUT_INNER` with `entered_inner=False` — when ground truth expects 5 of these 11 to be makes. Root cause (verified by reading `rim.py`, not just inferred): `rim.rim_y` (line 31) is the *midline* of the outer band, but Patch 2 arms from any in-band position, not just the top of the band. Given ~20% per-frame detection and a 2-consecutive-frame arm requirement, the trajectory points seeded into `_recent` at arming time are frequently already at or past `rim_y` by the time `ARMED` triggers. `_update_armed`'s crossing check (`prev.y < rim.rim_y <= y`) requires a confirmed point *before* the midline to exist at all — for these shots there no longer is one, so `_passed_through` can never become `True` for the rest of that shot's life, and it falls through to the "whole ball below, no valid crossing" branch regardless of whether it was a real make. **This is a newly-discovered second bug, not something Patch 2's original validation (`simulate_inband_arms`) could have caught — that simulation only checked whether shots armed, never whether they scored correctly afterward.** Kept applied (tests pass, no regression to the original 6 shots), but the missing-makes problem is not resolved end-to-end yet. Not yet investigated further pending direction — see Section 4.
-
-**Update 2, root cause identified (same session):** the open question left by Update 1 has been answered — see the new top entry below. Both this and Update 1 are left visible rather than silently rewritten, per this doc's own adversarial-review standard.
-
-1. **Arm from in-band detections too, not only above-rim ones — root cause identified AND fix validated.**
-   `experiments/arm_gate_sweep.py` was extended to break each missing shot's detected frames down by which sub-condition of the qualifying test they fail. Result, identical across all 5 missing makes: detection rate 85-100% (the ball is reliably seen), `is_aligned` never fails, and `is_above` fails 100% of the time. A per-frame classification trace explains why: every one of the 5 windows' first detected frame is already `IN-BAND` — the ball is **never once observed while genuinely above the rim**, only from the moment it's already at rim height, descending smoothly to `below` from there.
-   This means `_update_idle`'s hard requirement to confirm the ball above the rim before arming is checking for a precondition that essentially never occurs for a real make on this camera setup. The fix: let the pre-arm phase also arm from an aligned, descending `IN-BAND` detection, not only an above-rim one.
-   **Validated**: `simulate_inband_arms` in `experiments/arm_gate_sweep.py` implements exactly this (same consecutive-streak/jitter/alignment semantics as today, only the vertical zone relaxed from "above" to "above OR in-band") and was run against real detector/tracker/rim-tracker output for all 3 clips. **Result: 5 of 5 missing makes rescued, with 0 spurious extra arms anywhere across all 3 clips.**
-   **Confidence: high**, both on the mechanism (direct trace of real data) and the fix (validated with a clean, unambiguous result — not just "didn't hurt," but rescued every missing shot with zero cost). The one-line diff (`self.rim.is_above(y)` → `not self.rim.is_below(y)`) is drafted in `experiments/proposed_state_machine_patches.md` (Patch 2), including new test coverage — not yet applied to `shot_logic/state_machine.py`, pending explicit confirmation per this project's standing rule.
-   - **Strongest case against:** arming on an in-band detection is a materially looser precondition than requiring above-rim first — closer to the rim's scoring zone, where false arms from non-shot motion (a hand near the rim, a pass through the area) are more plausible in principle. The measured spurious-arm count on this data is 0, which is reassuring but not proof it stays 0 on footage with more incidental near-rim motion (passes, rebounds, players' hands) than these 3 clips happen to contain.
-   - **Sample-size caveat, now stronger:** the 5 missing-shot trajectories' raw pixel coordinates are strikingly similar across all 3 clips, suggesting the whole `chonyy_*` corpus shares one camera position, not just "two source recordings." This finding — like everything else in this document — is validated against effectively one camera setup only.
-
-2. **Loosen the arm-gate requirement to tolerate gaps — validated, and shown to be the wrong lever for this specific problem.**
-   The idea: instead of requiring `descent_min_frames` *consecutive* qualifying frames before arming, require N qualifying frames within a longer rolling window that tolerates gaps. Proposed as the original top recommendation, on the reasoning that it targets sparse-but-nonzero detections during approach.
-   **`experiments/arm_gate_sweep.py` ran this against real detector/tracker/rim-tracker output for all 3 clips, sweeping N∈{2,3} × W∈{4,6,8,10,15}. Result: 0 of 5 missing makes rescued at every setting, with 0 spurious extra arms.** Now explained by #1 above: there's no gap to bridge — the ball is never above-rim at all in these windows, so no amount of temporal gap-tolerance on the *same* above-rim requirement can help. This recommendation is superseded by #1, not merely deprioritized.
-   Still a safe, low-risk change in isolation (never produced a spurious arm), but should not be pursued as a standalone fix — if #1 is implemented, this becomes redundant for the above-rim case it targeted, though it could still be layered on top of #1's in-band requirement for the same gap-tolerance reasoning.
-
-3. **TrackNet-style near-rim detection booster, invoked only as a fallback during a flagged shot window.**
-   **Demoted following #1's finding.** This was framed as the likely fix if detection turned out to be genuinely silent — it isn't; detection is 85-100% once the ball is in-band. A detection-rate booster doesn't address an architectural precondition problem. Still potentially useful later (e.g. if #1's fix reveals the ball is *also* poorly detected during whatever brief above-rim window does exist on other camera setups), but it's no longer the natural second choice.
-
-4. **Net-motion/pixel-disturbance signal as a secondary confirming feature** — cheap, but doesn't address an arming precondition problem; a complement to #1, not an alternative to it.
-
-5. **Clip classification second opinion** — lowest priority; structurally can't fire for shots that never reach a timeout state (see Section 2), and its reference implementation is unlicensed besides.
-
-6. **The bounce-up / `_passed_through` gating fix** (real bug, found by code read: `_update_armed`'s bounce-up check doesn't check whether the ball already validly crossed the inner gate before allowing a later noisy detection to overturn it to MISS) — keep on the list as a correct, trivial-risk fix, but it is **not** the cause of the reported symptom in this measured data (zero shots got far enough to be at risk of it, since none of them ever armed). Fully designed and validated in `experiments/proposed_state_machine_patches.md`, including a traced consequence: once applied, `MISS_BOUNCE_UP` becomes structurally unreachable, not just rarer. Independent of #1 — can be applied on its own at any time. Low priority, do eventually.
-
-**"No new model needed" holds, more clearly than at either earlier point in this document.** The root cause is a single hard-coded precondition in the state machine's arming logic, not a detection-quality problem and not a config-threshold problem. The fix is a one-line logic change to `shot_logic/state_machine.py` — drafted and validated (5/5 rescued, 0 spurious arms), not yet applied.
+Result: **69/75, 0 false makes.** It fired exactly once, on vt5 f2597, the case it targets. It is small and principled, but it is untested against misses: no labeled miss has an identity switch at the hoop. It is queued, not applied.
 
 ---
 
-## Section 4: Do this next
+## 2. Per-source findings
 
-**Superseded by Update 3 above.** Patch 2 and Patch 3 have been applied. The resolved-shot count did move from 6/11 to 11/11 as predicted, but all 11 resolve as MISS — the missing-makes problem is now a scoring bug (crossing never detected) rather than an arming bug. **New highest-value next step:** fix the crossing check in `_update_armed` so a shot that arms already in-band (with no confirmed point above `rim.rim_y`) can still register a valid through-crossing — candidate approaches (not yet designed or validated): (a) treat the arming observation itself as a potential crossing point when it's already at-or-past `rim_y`, testing its x against the inner bounds directly rather than requiring a prior above-the-line point; (b) seed `_recent` at arm time with a synthetic/extrapolated pre-line point; (c) some other approach worth designing fresh rather than assuming (a) or (b) is right without checking against the real traces first. Needs the same measure-before-fix discipline this document has followed throughout: trace what `rim_y` actually is relative to arming position in the 5 rescued shots' real data before designing a fix, don't guess.
+**V** means verified (code, LICENSE file, paper or GitHub API read by a research subagent this session). **I** means inference. Licenses come from the subagents' API/LICENSE checks. I did not re-check them myself.
 
-**Footage to film, still the top priority after that:** the 5 missing-shot trajectories' raw pixel coordinates are strikingly similar across all 3 clips (e.g. `(633,191)→...→(610,247)` and `(632,192)→...→(610,247)`), strongly suggesting the entire `chonyy_*` corpus shares one camera position/hoop setup, not just two source recordings as previously stated. Every finding in this document is effectively validated against **a single camera setup**. Footage from a genuinely different angle/distance/gym is the only way to know whether "makes are never seen above the rim" is a property of basketball shot geometry generally, or an artifact of this one camera's placement — and whether the in-band arming fix's 0-spurious-arms result holds up where there's more incidental near-rim motion (passes, rebounds, hands) than these 3 clips contain.
+### Multi-frame heatmap ball detection (TrackNet family and WASB)
+
+**What it does:** a heatmap regressor on 3-8 stacked consecutive frames, built for small, fast, blurred balls.
+
+| Repo | License (V) | Basketball? | Framework / CUDA (V) |
+|---|---|---|---|
+| yastrebksv/TrackNet (unofficial V1, arXiv 1907.03698) | none: learn only | no (tennis) | PyTorch, `device='cuda'` hardcoded; plain Conv2d |
+| TrackNetV4/TrackNetV4 (arXiv 2409.14543; not part of yastrebksv) | MIT | no (tennis, badminton) | TensorFlow/Keras |
+| qaz812345/TrackNetV3 | MIT (text also covers checkpoints) | no (shuttlecock) | PyTorch; `predict.py` supports MPS, `test.py` has `.cuda()` calls |
+| **nttcom/WASB-SBDT** (BMVC 2023) | **MIT** | **yes**: NBA set, 244k train frames | PyTorch; `detector.py` asserts CUDA and uses DataParallel; model is plain conv, so MPS port looks trivial (I) |
+
+**Applies:**
+- **WASB basketball numbers (V):** F1 80.6-82.6 at a 4 px threshold, about 22-30 FPS on a V100.
+- **Basketball is its hardest sport**, and its own basketball failure example is a blurry ball.
+- **Shot-window use:** it could run only in a rim crop during a shot window from a ~1 s frame buffer (I).
+
+**Doesn't apply / blockers:**
+- **The shipped basketball weights are trained on the SAM NBA dataset**, which is academic-only and available on request. Treat the weights as research-only.
+- **Broadcast domain:** a panning camera with a tiny ball.
+- **Speed:** unknown on an M2.
+- **Gaps:** it would plausibly fill 6-10-frame blur gaps over a backboard, but not a ball inside the net (I).
+- **False makes:** a heatmap always outputs a peak, and the hoop-ROI crop experiment on 2026-11-03 already showed that extra detections near the rim add false makes.
+- **Retraining:** likely a few thousand labeled frames from our camera (I).
+
+**Verdict:** not now. Revisit if capture settings and YOLO fine-tuning plateau.
+
+### Make/miss clip classification (NohanJoemon/Basketball-video-classification)
+
+**What it does (V, code read):** no rim crop and no temporal model. It takes 1 full frame per second, runs VGG16 features and a dense head, then averages. It was trained on 2,194 clips and scores 77.6% test accuracy, calling 14.8% of non-scoring clips scoring. Keras/TF.
+
+**License:** none, so learn only.
+
+**Applies:** the *idea* of a rim-crop clip classifier as a second opinion. It would be invoked only when an armed shot loses the ball near the rim, which is the measured failure. Under that design:
+- it could **veto** makes freely;
+- it could **confirm** a make only above a strict threshold;
+- it would never overturn a seen miss.
+
+**Lighter options (V licenses):** MobileNetV3 or EfficientNet with temporal pooling or TSM (BSD/MIT) avoids conv3d. That matters because conv3d on MPS has had correctness and speed bugs (PyTorch #197114, #192213). X3D (Apache-2.0) and MoViNet-A0 (MIT port) are viable.
+
+**Doesn't apply:**
+- **No published minimum dataset size** for rim-crop classifiers.
+- **Public make/miss classifiers score 78-95%**, which is not safe enough to count makes alone.
+- **Datasets:** PL-NBA (CC BY-NC) and BasketEvent are broadcast footage and non-commercial or unlicensed.
+
+**Verdict:** later. It needs hundreds of labeled clips from our camera.
+
+### Trajectory fitting (avishah3/AI-Basketball-Shot-Detection-Tracker, nvan21/Basketball-Shot-Detection)
+
+**What they do (V, code read):**
+- **avishah3** fits a 2-point line between the last point above the rim and the next buffered point. That point can be on the far side of any gap. It also adds a hard-coded 10 px "rebound zone" outside the rim, which is a false-make source.
+- **nvan21** derives pixels-per-inch from a white backboard contour, fits velocity over the last 3 points, forward-simulates under gravity, and says "going in" if 15/1000 simulated points hit the rim box. It has no gap handling and no counting.
+
+**License:** neither repo has one, so learn only. Our checkpoint comes from avishah3, which is why it has no clear license.
+
+**Applies:**
+- Both repos quietly bridge gaps with 2-point straight lines, and that is why they report high numbers on easy clips. **Our 0 false makes matters more than their claimed 95%.**
+- The sound version is a pre-gap-only fit in time, with x(t) linear and y(t) quadratic under a gravity prior scaled from the rim size. Use it as a *check*: predict into the post-gap frames, and treat a large residual as rim or net contact, which falls back to MISS (I).
+
+**Doesn't apply:**
+- It never resolves depth, so front-of-rim versus through stays ambiguous.
+- It breaks on rim or backboard contact and net drag, which is exactly where our gaps are.
+
+**Verdict:** possible as a veto or consistency check inside a gap-bridging rule. It must never be the sole evidence for a make.
+
+### Ball/hoop interaction and highlights (iamyb/shotcut)
+
+**License:** MIT (V).
+
+**What's there:** the repo is only a README, a LICENSE, images and a 445 MB Windows binary. There is no source, so nothing can be reused or learned.
+
+**Highlights feature:** the future highlights feature needs no outside code. Every `ShotResult` already has a frame index, so cutting clips is I/O.
+
+### Net motion as a signal
+
+**Prior art (V):**
+- NEX/HomeCourt patent US11157742B2 counts a make when there is "sufficient" hoop-net movement, even with the ball occluded. It finds pixel changes by background subtraction or a CNN, and treats a ball bouncing back above the hoop after net motion as "not finished".
+- Ballogy's US11839805B2 uses orange ball pixels mixed with white net pixels, plus net shape change.
+- ShotTracker's old net-accelerometer patent separates make impulses from rim rolls.
+- No open-source implementation was found.
+- **Both patents are close to this idea. Get advice before shipping anything near-identical.**
+
+**Applies (I):**
+- Frame differencing in a small net ROI costs under 1 ms. The ball's own box must be masked out, because a ball passing in front of the net also changes pixels there.
+- Timing matters: net motion must *follow* an approach inside the inner gate.
+- It targets exactly the in-net gaps we measured (vt5 f3104, lf_shot f600).
+
+**Doesn't apply:**
+- It does nothing without a net.
+- A rim-out also shakes the net.
+- It needs per-angle tuning.
+
+**Verdict:** the best cheap *new signal*, but only as a gated gap-filler. Validate it on our own misses before it can upgrade anything to MAKE.
+
+### Sources not on your list that matter
+- **Capture settings (physics, I).** Motion blur depends on shutter time, not frame rate. At 1/30 s a ~5-7 m/s ball smears about 20 cm, close to its own 24 cm diameter. At 1/500 s it smears about 1 cm. 60 fps also halves the per-frame displacement, which helps association. This attacks the root cause of 4-5 of the 7 failures, and it costs nothing in code: it needs only a 60 fps config profile with the frame-count thresholds doubled.
+- **Ultralytics fine-tuning guidance (V).** Its default augmentation has no motion blur, so an Albumentations `MotionBlur` must be added. Expect about 1-3k frames from our camera, weighted toward rim and backboard blur (I). This also replaces the unlicensed checkpoint.
+- **Hiemann et al., Sensors 2021 (V).** YOLOv3 on small, fast volleyballs with a **frame-difference 4th input channel** reached F1 86-89. A cheap multi-frame cue without adopting TrackNet.
+- **JadenS180/basketball-shot-tracker (MIT).** Already mined on 2026-11-03 for the hold, vetoes and stationary filter.
+- **Licensing of the stack (V):** `ultralytics` is AGPL-3.0, and the checkpoint has no clear license. Both matter before anything ships.
+- **Product practice (V, vendor claims only).** HomeCourt uses one phone camera and net motion (its patent). Noah uses a depth sensor above the rim. ShotTracker uses sensors, and Dr. Dish uses a mechanical switch. No independent accuracy numbers exist for any of them.
 
 ---
 
-## Adversarial self-review
+## 3. Ranked recommendations
 
-- **Checked:** did the ranking favor the intellectually interesting fix (TrackNet) over the boring one (gate logic change)? No — the boring fix is ranked first specifically because it's what the measured data supports; TrackNet is ranked second specifically because its own research surfaced it as unvalidated for this exact occlusion pattern.
-- **Flagged as unverified-not-fact:** TrackNet's fine-tuning cost (labeled-frame count, training hours) is inferred from its hyperparameters/architecture, not documented anywhere; the clip-classifier's "few hundred to ~1000 labeled clips" estimate is reasoned by analogy to its own training set, not verified against an actual second-opinion implementation.
-- **Flagged as assumed-not-checked:** the clean 1:1 correlation between "missing shots" and "expected makes" rests on filename ground truth plus a partial manual spot-check of 2 of 6 resolved traces, not a full frame-by-frame human review of all 11 shots. The two-source-recording sample size is a real limitation, stated prominently rather than buried in a footnote.
+Ranked by impact on the *measured* failure ÷ (effort + risk).
+
+| # | Change | Fixes (of 7) | Effort | Risk | Confidence |
+|---|---|---|---|---|---|
+| 1 | **Capture at 60 fps, shutter ≤ 1/500 s**, with a 60 fps config profile (frame-count thresholds ×2) | blur gaps: vt5 ×3-4, kyle; partly lf_shot | low (camera setting + config) | low | medium. Physics plus the trace evidence, but **not measured**: we have no 60 fps footage |
+| 2 | **Film and label our own misses** (≥100, weighted to front/back rim, in-and-outs) | none directly; it is what makes #3-#6 testable | medium (a filming session + labeling) | none | high that nothing below is trustworthy without it |
+| 3 | **Track re-adoption at the hoop** (`experiments/track_adopt_experiment.py`) | vt5 f2597 (measured: 69/75, 0 false makes) | very low | low-medium (untested on misses) | medium |
+| 4 | **Fine-tune the detector on our blurred frames**, auto-pre-labeled by interpolating the tracker across gaps, with motion-blur augmentation | blur gaps; also domain shift and the checkpoint license | medium-high | medium (new false positives near the rim) | medium |
+| 5 | **Gated net-motion gap confirmer** (ball box masked; needs an approach inside the inner gate, then net motion, then reappearance below) | vt5 f3104, possibly lf_shot f600 | medium | **high** (make-favourable; patents nearby; no net = no signal) | medium-low until tested on our misses |
+| 6 | Rim-crop clip classifier as veto/confirm | gaps generally | high (hundreds of clips) | medium | low for now |
+| 7 | WASB/TrackNet heatmap detector in the shot window | blur gaps | high (port, fine-tune, M2 speed unknown, research-only weights) | medium | low |
+
+**What would change this ranking:**
+- If 60 fps footage from our camera still shows 7+ frame blur gaps at the rim, #4 moves up. If #4 then plateaus, #7 comes back.
+- If our misses show front/back-rim outs scored as MAKE from half court (the depth problem), the priority becomes a *veto* signal (occlusion order, net motion) before any rescue rule.
+- If our footage is almost failure-free at 60 fps, the remaining work is threshold re-validation per camera angle, not new signals.
+
+### The strongest case against #1 (capture settings first)
+1. **It isn't measured.** The physics is solid, but the evidence that blur is the cause comes from third-party clips at 30 fps. A phone in a dim gym may not be able to hold a 1/500 s shutter without heavy noise, which could hurt detection more than blur does.
+2. **60 fps doubles detection cost.** Detection is about 5 ms per frame per the 2026-11-03 notes, which I did not re-measure. That is fine on the M2 for 60 fps, but the margin shrinks once Phase 3 pose runs.
+3. **Every frame-count threshold was tuned at 30 fps.** Doubling them is a guess and needs its own validation.
+4. **The ball can still be hidden for 13-25 frames inside the net**, because blur isn't the issue there. Two of the 7 failures (vt5 f3104, lf_shot f600) survive any shutter speed, so #1 cannot get us to 100%.
+5. **Fine-tuning (#4) would fix blur *and* the license problem in one go**, and the strict ranking undervalues that.
+
+Even so, #1 comes first: it is nearly free, it doesn't touch code, and the footage it needs is the same footage #2-#5 need anyway.
+
+---
+
+## 4. Do this next
+
+**The change:** film our own camera at **60 fps with a fixed fast shutter (1/500 s or faster)**, and record a 30 fps / auto-exposure control set from the same position. Add a 60 fps config override (frame-count thresholds doubled) under `experiments/`. Then run `scripts/evaluate.py` and `experiments/shot_diagnostics.py` on both sets with the logic unchanged. The 30 fps vs 60 fps comparison measures how much of the blur problem the camera alone fixes. The misses give the first meaningful false-make number from our angle.
+
+**Camera:**
+- **Position A (primary):** elevated about 2.5-3.5 m, near the half-court line, facing the hoop. The whole hoop, backboard, shooter and floor are in frame, with room above the rim for the arc. Mount it rigidly; a bump invalidates the run.
+- **Position B (angle check):** elevated, at the wing / 45°, roughly 6-8 m from the hoop.
+- **Settings:**
+  - 1080p (or 4K) at 60 fps;
+  - shutter 1/500 s or faster, with exposure locked (needs good light);
+  - focus locked on the rim.
+- **Control:** the same Position A framing at 30 fps with auto exposure (the phone default).
+
+**Shot list, Position A at 60 fps (the main set; about 45-60 minutes with a rebounder):**
+
+| What | Count | Why |
+|---|---|---|
+| Clean makes (swish) | 30 | baseline |
+| Makes touching rim or backboard (incl. bank shots) | 30 | the blur/deflection cases we fail on |
+| Front-rim misses (ball bounces back toward the shooter) | 20 | depth-axis false-make risk from half court |
+| Back-rim misses (bounces long, over or off the back) | 20 | same, and the most likely to pass the 2D gate |
+| In-and-outs / rim-outs (ball rolls around and out) | 15 | `_passed_through` is never reset after a crossing, so an in-and-out that crosses the inner gate then drops can score MAKE (known code risk) |
+| Side rim-outs | 10 | sideways path |
+| Short airballs passing *in front of* the rim | 10 | ball in front of the rim/net in 2D |
+| Long airballs / over the back | 5 | |
+| Non-shots near the rim: rebounds, tips, passes under the basket, ball held up near the rim | 20 | spurious-shot check |
+
+That is 60 makes, 80 misses and 20 non-shots.
+
+**Also record:**
+- **Position A at 30 fps / auto exposure:** 20 makes and 20 misses (front, back and in-and-out mixed), for the blur A/B.
+- **Position B at 60 fps:** 20 makes and 20 misses (same mix), for the angle check.
+- **No net:** if a netless rim is available (many outdoor courts), 20 makes and 20 misses at Position A. Otherwise note it as untested.
+- **Held out:** keep one complete session (e.g. a second day) untouched for the Phase 1 exit check.
+
+**Label as you go:** call out "make" or "miss, front/back/in-and-out" on the audio while filming. That makes labeling fast. The labeling page / `labels.json` workflow from 2026-11-03 then applies unchanged.
+
+**How to read the result:**
+- **0 false makes on 80 misses** gives a 95% bound of about 4%. This is the first real safety number.
+- **If makes-counted at 60 fps is ≥ 95%:** move to the Phase 1 live test.
+- **If not:** run `shot_diagnostics.py` on each failure and pick from #3-#5 above, based on the failure's layer.
+
+---
+
+## 5. Self-review
+
+- **Interesting fix over boring fix?** The top recommendations are a camera setting, more footage, and a 10-line identity rule. TrackNet/WASB is ranked last, with reasons. The net-motion signal is the "interesting" one. It is ranked below fine-tuning because it is make-favourable and its main evidence is patents, not data.
+- **From READMEs, papers or vendor pages rather than code or data I ran:**
+  - every license (subagent API/LICENSE checks);
+  - WASB/TrackNet accuracy and speed (the papers);
+  - all product claims;
+  - the blur physics and the 60 fps benefit;
+  - dataset-size estimates;
+  - the ~5 ms/frame detection speed (2026-11-03 notes, not re-measured).
+- **Measured this session:**
+  - the exit-path breakdown;
+  - the per-failure traces;
+  - the threshold sweeps;
+  - the track-adoption experiment;
+  - the 111 passing tests.
+- **Assumed without checking:**
+  - That the user's labels are right. Two lf_back makes were added by Claude on 2026-11-03.
+  - That the cached detections still match the current checkpoint. The cache key is the weights *name*, not its hash.
+  - That the 4 never-armed traces would resolve MAKE once armed. Partly verified by the align/descent sweeps, which rescued f211, f1906 and lf_alan as MAKE.
+  - That blur, not some other detector weakness, explains the vt5 gaps. Based on the 2026-11-03 frame review, not re-viewed this session.
+- **Valid conclusion check:** "No new model needed" holds *for now*. But the fix is not threshold tuning either. It is input quality (shutter and frame rate) and a miss set big enough to tune against safely.

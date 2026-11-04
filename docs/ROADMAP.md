@@ -1,127 +1,123 @@
 # ShotVision Roadmap
 
-ShotVision's long-term goal is a single-camera basketball analytics system: make/miss, shot value, shot type, multiple players, then decision-level analysis. Each stage builds on the one before it, so **a stage starts only when the previous one meets its exit criteria**. Everything downstream assumes make/miss detection is reliable, and that is still the current blocker.
+ShotVision is a single-camera basketball analytics system. Each phase is described by **what it must do**. Tools and libraries are chosen when that phase starts, based on what was learned up to then.
 
-Status as of 2026-11-03 (PR #1 merged): **68/75 labeled shots correct, 0 false makes** on 11 third-party clips. See `docs/PROJECT_LOG.md` for how we got here.
+**Rule for the whole roadmap: no phase starts until the one before it is reliable on real footage from our own camera.** "Reliable" means the phase's exit criteria below, measured on a held-out set that was never used for tuning.
+
+Status (2026-11-04): Phase 1 in progress. 68/75 labeled shots correct, 0 false makes, on 11 third-party clips. Measured diagnosis and next step: `docs/tracking-research.md`. History: `docs/PROJECT_LOG.md`.
 
 ---
 
-## Stage 1 (current): Make it work: testing and make/miss accuracy
+## Camera assumptions and single-camera limits
 
-The goal is to prove the counter is reliable **on our own camera**, then make it as accurate as possible. So far everything has been tuned and tested on other people's footage, and only 10 of the 75 labeled shots are misses.
+The goal is for the system to work **from any angle where the hoop, the ball and the shooter are visible**. Setup is already angle-independent: the hoop is found automatically every frame and there is no manual rim calibration. Accuracy is not angle-independent, and the roadmap must not pretend otherwise:
 
-### 1.1 Label tooling in the repo
-- Move the candidate-shot finder and contact-sheet generator used for the labeling page into `scripts/label_candidates.py`, so any new clip becomes a labeling page in one command.
-- Labels keep flowing into `sample_clips/labels.json` and are scored by `scripts/evaluate.py`.
+- **One camera sees a 2D projection.** Whether the ball passes *through* the rim or *in front of / behind* it is a depth question, and depth is along the camera's line of sight. The typical setup is **elevated near half court, facing the hoop**. That puts the front-rim/back-rim direction on the camera axis, which is the hardest view for this question. A camera at the wing or baseline sees that direction side-on. From half court, front-rim and back-rim misses are the main false-make risk.
+- **The ball is small at the rim from half court**: about 20-30 px at 1080p, about 12-20 px at 720p. Motion blur at 30 fps already causes most of the remaining failures on closer cameras.
+- **2D cues that do carry depth**: whether the rim/net is drawn over the ball (occlusion order), whether the net moves, whether the ball slows down in the net, and where it comes out below. None is perfect alone. Ball size is too noisy at these sizes to measure depth.
+- **Per-angle thresholds**: the scoring line sits at a fraction of the detected hoop box (currently 0.4). That fraction depends on camera elevation, so every new camera position needs its own measured score before we trust it.
+- **Frame rate**: all shot-logic thresholds are counted in frames and tuned at 30 fps. A 60 fps camera needs a config profile with frame counts scaled to match.
 
-### 1.2 Film our own test footage
-- **Camera:** fixed position, whole hoop in frame with room above it for the ball's arc. **60 fps if possible**, since motion blur causes most remaining failures. Good lighting.
-- **Shots to capture:** about 30 makes and **about 30 misses of every kind** (rim-outs, in-and-outs, front rim, back rim, airballs, bank shots), plus non-shots (rebounds, dribbling or holding the ball near the rim).
-- Film on **more than one day or angle** if possible, so one session can serve as a held-out test.
-- Think ahead to Stage 2: if possible, also try a framing that shows the shooter's feet (see 2.0).
+Each phase's "single-camera limit" note says what this means for that phase.
 
-### 1.3 Measure before changing anything
-- Label the new footage and run `scripts/evaluate.py` **with the current settings unchanged**. This is the honest test of whether the settings tuned on third-party clips hold up on ours.
-- Keep at least one session as a **held-out test set** that is never used for tuning.
+---
 
-### 1.4 Improve accuracy: the shot-tracking loop
-- Same discipline as the 2026-11-03 loop: evaluate, diagnose each failure from its frames, make one change, re-run everything, and keep the change only if nothing regresses and false makes stay at 0.
-- Candidate techniques from the open-source research (in rough priority):
-  - a short make-confirmation hold for in-and-outs;
-  - size and steepness checks that can only veto a make (ball passing in front of the rim);
-  - re-tuning the hoop-aware occlusion grace for our camera.
+## Phase 1: Make/miss (current, blocked)
 
-### 1.5 Fine-tune the ball detector
-- Most remaining misses are a **motion-blurred ball the detector never sees**. No confidence, resolution or crop setting fixed it, so the model itself needs training.
-- **Pre-label automatically:** where the tracker follows the ball on both sides of a blurred stretch, interpolate its box through the gap. We then correct the boxes instead of drawing them all.
-- Train with `scripts/finetune_roboflow.py` on our frames, plus a CC-BY dataset if useful. Validate on the held-out session.
-- This also **replaces the current checkpoint, whose license is unclear**.
+**Must do:** for a single shooter, reliably decide whether each shot went in. A make counts only if the ball actually passes through the rim. Rim-outs (including in-and-outs), balls passing in front of the rim, and near misses must not count. It must work with and without a net, from the camera positions we support, in real time on a live camera.
 
-### 1.6 Live test
-- Run `python -m shotvision.main --source 0` with a phone as a webcam during a real session, and compare the on-screen count to a manual tally.
-- Check it keeps up in real time (detection is about 5 ms per frame on the Mac today) and recovers if the camera is bumped (the `r` key re-acquires the rim).
+**Depends on:** nothing earlier.
 
-### Stage 1 exit criteria (proposed, to agree before starting)
-On the held-out footage from our camera:
-- **0 false makes**, or an agreed tiny rate on a large sample;
-- at least **95% of makes counted**;
+**Where it stands:** the pipeline runs end to end: capture, per-frame ball/hoop detection, gated ball association, rim tracking, a MISS-biased shot state machine, stats and an overlay. A labeled-clip scoreboard (`scripts/evaluate.py`) is in place, and the per-shot diagnostic is `experiments/shot_diagnostics.py`. On the 11 third-party clips: 68/75 correct, 0 false makes. All 7 failures are makes that were not counted. 6 of them involve the ball being invisible for 7-25 frames at the rim, and 0 are timeouts.
+
+**Work, in order:**
+1. **Film our own footage** (spec in `docs/tracking-research.md`, "Do this next"). Until then, every number is from other people's cameras, and there are only 8 distinct labeled misses.
+2. **Measure with settings unchanged** on that footage, and keep one session held out.
+3. **Improve on measured failures only.** One change at a time, re-run everything, and keep a change only if false makes stay at 0. Candidates, ranked in the research doc: capture settings (60 fps, fast shutter), track re-adoption at the hoop, fine-tuning the detector on our blurred frames, a gated net-motion confirmer.
+4. **Live test**: phone as webcam, compare the on-screen count to a manual tally, and check that it keeps up in real time.
+
+**Hardest technical risk:** proving **0 false makes from the half-court angle**. Front-rim and back-rim misses can look like makes in 2D. Every rule that rescues the remaining missed makes is make-favourable, so it trades directly against this risk. A small miss set can't show the trade is safe: with 0 false makes in N misses, the 95% upper bound on the false-make rate is about 3/N, so 10 misses → ≤ 26%, 100 → ≤ 3%, 300 → ≤ 1%.
+
+**Data / footage needed:**
+- At least 100 misses of every kind, weighted toward front-rim, back-rim, in-and-out and short shots in front of the rim. Grow this to ~300 over time for a <1% bound.
+- About as many makes, half of them touching the rim or backboard.
+- Non-shot moments near the rim: rebounds, tips, passes under the basket.
+- With a net and, if possible, without one.
+- The primary half-court position, plus at least one other angle.
+- 60 fps with a fast shutter, and a 30 fps control session.
+
+**Exit criteria (to agree before tuning on our footage), on held-out footage from our camera:**
+- 0 false makes, on at least ~100 misses;
+- at least 95% of makes counted;
 - no spurious shots from non-shot moments;
-- a live session count matches the manual tally.
+- a live session's count matches a manual tally.
 
 ---
 
 ## Phase 2: Shot value (2PT vs 3PT)
 
-**What it does:** a one-time setup where you mark a few known points on the court, so the system can translate any spot on screen into a real position on the floor. When you release a shot, it checks where your feet were, works out your distance from the hoop, and decides whether it was a two or a three.
+**Must do:** a one-time court setup per court, where known court points are marked so any on-screen floor position maps to a real floor position. At the release, find the shooter's foot position, compute the distance from the hoop, and classify the shot as a two or a three. Court dimensions and line distances vary (NBA, FIBA, college, high school, park courts), so calibration and the 3PT line are per court.
 
-**How it fits the code:**
-- **2.0 Camera framing:** the make/miss camera is framed tightly on the hoop, but this phase needs to see the shooter's feet and enough floor to map. Decide early between one wider camera (smaller ball, so harder make/miss detection) and two cameras (one on the hoop, one on the court).
-- **Court calibration:** mark 4 or more known floor points once per setup (baseline corners, free-throw lane corners, points on the 3PT arc). This computes a **floor-plane mapping (homography)** from screen to court coordinates. It is stored per camera position, like a one-time version of the old rim calibration, and only valid for points on the floor.
-- **Release moment:** taken from the ball tracker, when the ball separates from the shooter just before the upward flight that later arms the shot.
-- **Feet position:** the shooter's foot points from pose estimation, or the bottom-center of their person box as a first version. The detector already returns a `person` class.
-- **3PT line:** configurable per court (NBA, FIBA, NCAA, high school).
-- **Close to the line:** feet within a margin of the line get flagged "uncertain" instead of guessed, in the same spirit as the miss bias.
-- **Where it lives:** new `court/` module, plus a field on each `ShotResult` and `StatsTracker` points.
+**Depends on:** Phase 1 (the shot and its outcome). It also needs a **release moment** for each shot. A rough version can come from the ball trajectory: the start of the upward flight that later arms the shot. The precise version is Phase 3's job.
 
-**Exit criteria:** on labeled footage, 2/3 classification is correct on at least about 97% of shots that aren't flagged uncertain, and shots near the line are flagged rather than wrong.
+**Hardest technical risk:** the shooter's feet at the release are often in the air or hidden by other players. A floor mapping is valid only for points on the floor, so a jumping player's feet must be taken from the take-off frame, not the release frame. Shots taken near the line are inherently uncertain. They must be flagged "uncertain" rather than guessed, in the same spirit as the MISS bias.
+
+**Single-camera limit:** the floor mapping needs enough visible court markings, and they must stay visible. Camera bumps invalidate it, so we need a check that warns when the court no longer lines up. The camera must see the shooter's feet *and* the rim with enough ball resolution for Phase 1. That framing decision is shared with Phase 1 and should be tested with Phase 1's footage.
+
+**Data / footage needed:** shots from known, measured floor spots (tape marks at fixed distances), including many within ~0.5 m of the 3PT line. Footage from at least two courts with different dimensions.
+
+**Exit criteria:** at least 97% correct 2/3 calls on shots not flagged uncertain, and shots near the line flagged rather than wrong.
 
 ---
 
 ## Phase 3: Shot type
 
-**What it does:** the system reads your body's movement during the shot (arms, shoulders, hips, knees) to tell shot types apart: layups, pull-up jumpers, fade-away twos and threes, and so on. It starts with simple rules (e.g. a fade-away is when your body moves away from the hoop as you shoot, a layup is a close, low release), then later learns from clips of you doing each shot type once you've collected enough.
+**Must do:** read the shooter's body movement through the shot to classify its type: layup, pull-up jumper, catch-and-shoot, fade-away two, fade-away three, and others. Rare or unclear shots go into an "unknown" bucket. Detect the release moment itself precisely. Start with simple rules on body movement. Examples: a fade-away moves the body away from the hoop at release; a layup is a close, low release after a gather. Move to a learned classifier once enough labeled clips of each type exist.
 
-**How it fits the code:**
-- **Pose estimation:** keypoints per frame from a pose model, run only around shot attempts to save compute. Options include YOLO-pose (same library, AGPL) and MediaPipe (Apache-2.0).
-- **Rules first:** use features such as release height, distance to the hoop (from Phase 2), body motion relative to the hoop at release, jump and gather timing, and dribble before the shot.
-- **Learning later:**
-  - collect labeled clips per shot type, using the same labeling-page workflow with a shot-type field;
-  - train a small classifier on keypoint sequences;
-  - keep the rules as a fallback.
-- **Where it lives:** new `pose/` and `shot_type/` modules, plus a `shot_type` field on `ShotResult`.
+**Depends on:** Phase 1 (which shots exist) and Phase 2 (distance from the hoop, floor position).
 
-**Exit criteria:** a per-type confusion matrix on held-out clips, with an agreed minimum accuracy per type. Rare types are allowed an "unknown" bucket.
+**Hardest technical risk:** body keypoints from one camera at half-court distance are noisy and get hidden by defenders. Classes such as "fade-away" depend on motion toward or away from the hoop, which can be along the camera axis and so hard to measure from half court. Classes also blur into each other, and labeled examples of rare types accumulate slowly.
+
+**Single-camera limit:** motion toward or away from the camera is poorly measured. Shot-type rules should lean on the floor mapping (Phase 2) for movement over the floor rather than raw image motion.
+
+**Data / footage needed:** labeled clips per shot type. Rules need roughly 20-30 per type to validate. A learned classifier needs on the order of 100+ per type. Each clip needs a release-frame label.
+
+**Exit criteria:** a per-type confusion matrix on held-out clips, with an agreed minimum accuracy per type, and release-frame error within a few frames.
 
 ---
 
 ## Phase 4: Multiple players
 
-**What it does:** the system follows every player on the court and keeps track of who is who throughout the game. When a shot goes up, it gives credit to whoever had the ball at release, then keeps a running tally of each player's makes, misses, and points. Players get tagged by name once at the start of the session.
+**Must do:** follow every player across a game with consistent identities, credit each shot to whoever released it, and keep running per-player makes, misses and points. Players are tagged by name once at session start.
 
-**How it fits the code:**
-- **Player tracking:** this is where a multi-object tracker (ByteTrack or BoT-SORT) is the right tool. Players are large and move slowly between frames, the opposite of the ball problem that made us drop ByteTrack for the ball.
-- **Keeping identities:** add appearance features (jersey color or number, re-identification) so identities survive occlusions and players crossing.
-- **Shot credit:** the player whose hands or body are closest to the ball at the release moment (Phase 2 release detection plus Phase 3 hand keypoints).
-- **Name tagging:** click or select each player once at session start to attach a name to their track.
-- **Stats:** `StatsTracker` becomes per player.
-- **Where it lives:** extend `tracking/` with a player tracker; new `players/` module for identity and attribution.
+**Depends on:** Phase 1 (outcomes), Phase 2 (points), and Phase 3 (the release moment and the shooter's hands, for attribution).
 
-**Exit criteria:** on labeled pickup footage, the shot credited to the correct player at least about 95% of the time, and identity swaps rare and correctable.
+**Hardest technical risk:** **identity through occlusion**. In pickup games, players in similar clothing cross, screen and cluster under the basket, and a single camera loses them behind each other. One identity swap wrongly credits every later shot. Attribution at the release is a second risk when two players are close to the ball.
 
----
+**Single-camera limit:** players hide each other far more from a single elevated viewpoint than from multiple cameras. The system needs a cheap way to correct a swap, plus a confidence flag on uncertain attributions.
 
-## Future roadmap
+**Data / footage needed:** multi-player pickup footage with per-shot shooter labels and identity labels at intervals. Include sessions with similar jerseys. Get consent from everyone filmed.
 
-| Feature | What it does | Depends on |
-|---|---|---|
-| Shot selection analysis | Flags poor decisions, like taking a fade-away when a better shot was available. The main differentiator, but the hardest part, since it needs to know where every defender is. | Phases 2–4, defender positions, a definition of "better shot" |
-| Hot zones and tendencies | Shows where on the court you shoot best and worst, and what shots you lean on. | Phases 2–3 |
-| Passes vs shots vs turnovers | Tracks what happens with each possession, not just shots. | Phase 4, ball possession tracking |
-| Replays and highlights | Automatically clips makes and big moments from pickup games. | Stage 1 (clip around each make); richer with Phases 3–4 |
-| Pickup game analytics | Full stat breakdowns for real games, not just solo practice. | Phases 2–4 |
-
-Replays and highlights is the cheapest win once Stage 1 is reliable: every `ShotResult` already has a frame index, so cutting a clip around each make is mostly I/O.
+**Exit criteria:** the correct player credited on at least ~95% of shots, and identity swaps rare and correctable in the UI.
 
 ---
 
-## Applies to every stage
+## Future (not yet scoped)
 
-- **Measure everything:** each stage gets its own labeled set and a scoreboard like `scripts/evaluate.py`, with a held-out set, before any tuning.
-- **Prefer missing a result over getting it wrong:** when unsure, the system should say "uncertain" or count nothing rather than produce a confident wrong answer. That goes for makes, 2/3, shot type and player credit.
-- **Module boundaries:** keep `capture/`, `detection/`, `tracking/`, `shot_logic/`, `stats/` and `overlay/` separate, and add new stages as new modules rather than rewrites.
-- **Performance:** stay real-time on the Mac. Pose and player tracking are the expensive additions, so run them only around shot attempts where possible.
-- **Licensing:**
-  - the current ball/hoop checkpoint has no clear license (Stage 1.5 replaces it);
-  - `ultralytics` is AGPL-3.0;
-  - check any pose or re-identification model's license before adopting it.
-- **Privacy:** pickup-game features record other people. Get consent before filming them and keep footage local by default.
+| Feature | What it needs to do | Depends on | Hardest part |
+|---|---|---|---|
+| Shot selection analysis | Flag poor decisions, e.g. a contested fade-away when a better shot was available. The long-term differentiator. | Phases 2-4, defender positions, a definition of a "better shot" | Needs every defender's position and a model of shot quality. This is the hardest piece. |
+| Hot zones and tendencies | Make % and shot mix by court location. | Phases 2-3 | Enough shots per zone to mean anything. |
+| Possession tracking | Passes vs shots vs turnovers. | Phase 4, ball possession over time | Ball ownership while it is in a player's hands, hidden. |
+| Replays, highlights, clips | Cut clips around makes and big moments in pickup games. | Phase 1 (cheapest win: every shot already has a frame index); richer with Phases 3-4 | Mostly I/O and storage. |
+| Full pickup-game analytics | Box scores for real games. | Phases 2-4 | Everything above, together. |
+
+---
+
+## Applies to every phase
+
+- **Measure first:** each phase gets its own labeled set, a scoreboard like `scripts/evaluate.py`, and a held-out set.
+- **Prefer no answer to a wrong one:** "uncertain" or "not counted" beats a confident error. This covers makes, 2/3, shot type and player credit.
+- **Real time on the Mac** (M2 Pro, MPS, no CUDA). Run expensive models only around shot attempts. Flag any hard CUDA dependency before adopting a tool.
+- **Licensing:** check every repo, model and dataset before using it. No license means learn from it, don't copy it. The current ball/hoop checkpoint has no clear license, and `ultralytics` is AGPL-3.0. Both matter before anything ships.
+- **Privacy:** pickup-game features record other people. Get consent and keep footage local by default.

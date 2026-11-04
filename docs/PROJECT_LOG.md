@@ -69,6 +69,17 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **Stopped at iteration 7, stop rule not met.** 5/11 clips pass outright. Of the 7 remaining failures, 6 are makes the detector cannot see (dark ball motion-blurred over the backboard or below the net, ball out of frame, a huge blurred ball on kyle_test_video) at any setting tried. The 7th (lf_shot_detection f600) would need a more make-favourable rule across a 14-frame gap, which 10 labeled misses can't show is safe. Smoothness: average make-window coverage 76%, average longest gap 5.7 frames, but 23 of 65 make windows still fail the strict check (gap ≤ 6 frames, coverage ≥ 60%), almost all because of the net/blur gap.
 - **Next:** (1) film and label misses from the target camera (rim-outs, in-and-outs, airballs) so false-make safety is actually measured; (2) fine-tune the detector on motion-blurred ball frames from that camera (scripts/finetune_roboflow.py); (3) re-run scripts/evaluate.py after each.
 
+### 2026-11-04 — Session recovery: measured diagnosis, roadmap rewrite, CLAUDE.md
+
+- Rebuilt context after a lost session. The user's recovery summary was out of date. ByteTrack had already been replaced and PR #1 merged; the score was 68/75 with 0 false makes; detection coverage was ~76% in make windows, not 11%; there were 111 passing tests, not 76.
+- New `experiments/shot_diagnostics.py`. It replays cached detections (`--cache-only` never loads the .pt) and reports each shot's exit path, its last confirmed positions in rim units, the gaps, and which layer lost each failure.
+- **Measured:** 0 shots resolve by timeout. Of the 7 failed makes, 4 never arm, 2 end through the occlusion grace and 1 resolves sideways. 6 of the 7 involve the ball being invisible for 7-25 frames at the rim. All 10 labeled misses resolve with the ball in view. The vt5 "spurious" MISS at f3156 is the f3104 make resolving 27 frames after its label window.
+- **Threshold sweeps:** align tolerance, descent frames, prearm gap and occlusion grace each trade one make for another (best 69/75). Inner shrink 0.15 → 0.05 gives 2 false makes.
+- **`experiments/track_adopt_experiment.py`:** adopting a new track id at the hoop gives 69/75 with 0 false makes. It fired once, on vt5 f2597. Queued, not applied.
+- **Research** (3 subagents, licenses checked) on WASB/TrackNet, clip classifiers, trajectory fits, net motion, products and patents.
+- Rewrote `docs/tracking-research.md` and `docs/ROADMAP.md`, and added `CLAUDE.md`. The user wants make/miss to work from any angle where hoop, ball and person are visible; the roadmap records the single-camera depth limits that come with that.
+- **Next:** film our own camera at 60 fps with a fast shutter (shot list in the research doc, "Do this next"), and measure with the logic unchanged.
+
 ---
 
 ## Tools used
