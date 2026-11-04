@@ -84,20 +84,20 @@ def test_rim_out_exits_inner_bounds_at_rim_height():
 
 
 def test_bounces_upward_after_reaching_rim_height():
-    # Post bounce-up-gating-fix: a bounce that happens AFTER a valid
-    # through-crossing (_passed_through=True) no longer overturns the shot -
-    # it now resolves MAKE once the whole ball clears the rim, instead of
-    # the pre-fix MISS.
+    # In-and-out: the path crosses the scoring line inside the inner gate,
+    # then the ball comes back above the rim. A ball that went through can't
+    # do that, so the shot ends MISS on that frame (it used to stay a MAKE).
     sm = ShotStateMachine(_rim(), _config())
     positions = [
         (150, 10), (150, 20),  # arm
-        (150, 60),              # reaches band, inside inner bounds -> passed_through=True
-        (150, 30),              # bounces back above the rim - no longer resolves MISS here
-        (150, 80),               # whole ball below rim -> MAKE (passed_through survived the bounce)
+        (150, 60),              # crosses the scoring line (y=58) inside the inner gate
+        (150, 30),              # back above the rim (outer_top=50) -> in-and-out MISS
+        (150, 80),              # never reached: the shot already resolved
     ]
     results = _feed(sm, positions)
     assert len(results) == 1
-    assert results[0].outcome is ShotOutcome.MAKE
+    assert results[0].outcome is ShotOutcome.MISS
+    assert results[0].frame_idx == 3
 
 
 def test_reaches_below_rim_without_ever_being_inside_inner_bounds():
@@ -226,13 +226,72 @@ def test_reason_below_without_inner():
     assert results[0].entered_inner is False
 
 
-def test_reason_make_confirmed_after_bounce_post_passthrough():
-    # A bounce back above the rim after a valid through-crossing does not
-    # overturn the shot (the old MISS_BOUNCE_UP exit was unreachable and has
-    # been removed; see experiments/proposed_state_machine_patches.md Patch 3).
+def test_reason_in_and_out_after_bounce_post_passthrough():
+    # A bounce back above the rim after a valid through-crossing is an
+    # in-and-out: MISS, with the crossing still recorded for diagnostics.
     sm = ShotStateMachine(_rim(), _config())
     results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 30), (150, 80)])
+    assert results[0].reason is ResolutionReason.MISS_IN_AND_OUT
+    assert results[0].outcome is ShotOutcome.MISS
+    assert results[0].entered_inner is True
+
+
+def test_bounce_inside_the_rim_band_after_crossing_still_makes():
+    # Rattling around inside the rim (centre stays at or below the top of the
+    # hoop box) is not an in-and-out: the ball then drops through -> MAKE.
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (150, 52), (150, 50), (150, 80)])
+    assert len(results) == 1
     assert results[0].reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_in_and_out_rolls_out_sideways_above_rim():
+    # Crosses inside, pops back up and out over the side of the rim.
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 60), (170, 45), (210, 40), (230, 90)])
+    assert len(results) == 1
+    assert results[0].reason is ResolutionReason.MISS_IN_AND_OUT
+    assert results[0].frame_idx == 3
+
+
+def test_weak_observation_above_rim_after_crossing_is_not_an_in_and_out():
+    # A low-confidence box never resolves a shot, in either direction.
+    from shotvision.shot_logic.state_machine import BallObservation
+
+    sm = ShotStateMachine(_rim(), _config())
+    _feed(sm, [(150, 10), (150, 20), (150, 60)])
+    weak = BallObservation.from_center(150, 30)
+    weak.weak = True
+    assert sm.update(weak, 3) is None
+    result = sm.update((150, 80), 4)
+    assert result is not None and result.reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_other_tracked_object_above_rim_after_crossing_is_not_an_in_and_out():
+    # A different tracker identity (e.g. a shooter's head) above the rim
+    # says nothing about the armed ball.
+    from shotvision.shot_logic.state_machine import BallObservation
+
+    def obs(x, y, tid):
+        o = BallObservation.from_center(x, y)
+        o.track_id = tid
+        return o
+
+    sm = ShotStateMachine(_rim(), _config())
+    for i, (x, y) in enumerate([(150, 10), (150, 20), (150, 60)]):
+        sm.update(obs(x, y, 1), i)
+    assert sm.update(obs(150, 30, 2), 3) is None
+    result = sm.update(obs(150, 80, 1), 4)
+    assert result is not None and result.reason is ResolutionReason.MAKE_CONFIRMED
+
+
+def test_ball_rising_above_rim_before_any_crossing_is_not_an_in_and_out():
+    # No crossing yet (e.g. a hand-off near the rim before the ball drops):
+    # going back up is not an in-and-out; the shot stays armed.
+    sm = ShotStateMachine(_rim(), _config())
+    results = _feed(sm, [(150, 10), (150, 20), (150, 40), (150, 15)])
+    assert results == []
+    assert sm.state is ShotState.ARMED
 
 
 def test_reason_occlusion_gap():

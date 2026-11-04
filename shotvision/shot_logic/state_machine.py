@@ -33,8 +33,10 @@ Flow (per ball observation fed in frame by frame):
                     horizontal gate, and the *whole ball* then reaches below
                     the outlined rim (bbox top edge below `outer_bottom`).
   ARMED -> MISS  : the path crosses the rim line outside the inner gate
-                    (rim-out), the whole ball reaches below the rim without a
-                    valid through-crossing, or the shot never resolves within
+                    (rim-out), the ball comes back above the rim after a
+                    crossing inside it (in-and-out), the whole ball reaches
+                    below the rim without a valid through-crossing, or the
+                    shot never resolves within
                     `shot_timeout_frames` / an `occlusion_grace_frames` gap.
 
 A brief net/hand occlusion (missing detections up to `occlusion_grace_frames`)
@@ -138,6 +140,7 @@ class ResolutionReason(Enum):
     MAKE_CONFIRMED = "make_confirmed"
     MISS_RIM_OUT_SIDEWAYS = "miss_rim_out_sideways"  # crossed rim line outside inner gate
     MISS_BELOW_WITHOUT_INNER = "miss_below_without_inner"  # whole ball below, no valid crossing
+    MISS_IN_AND_OUT = "miss_in_and_out"  # crossed inside the rim, then came back above it
     MISS_OCCLUSION_GAP = "miss_occlusion_gap"  # no detection longer than grace
     MISS_TIMEOUT_OCCLUDED = "miss_timeout_occluded"  # timed out during an occlusion gap
     MISS_TIMEOUT_ABOVE = "miss_timeout_above"  # timed out still hovering above the rim
@@ -302,6 +305,14 @@ class ShotStateMachine:
                 if rim.is_within_outer_x(cross_x):
                     return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_RIM_OUT_SIDEWAYS)
                 return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_BELOW_WITHOUT_INNER)
+
+        # In-and-out: the path crossed the scoring line inside the inner gate,
+        # but the ball has come back above the rim (its centre above the top
+        # of the hoop box). A ball that went through cannot do that, so this
+        # is a rim-out after the crossing, not a make. Only confirmed,
+        # same-identity observations reach this point.
+        if self._passed_through and y < rim.outer_top:
+            return self._resolve(ShotOutcome.MISS, frame_idx, ResolutionReason.MISS_IN_AND_OUT)
 
         # Whole ball below the outlined rim (bbox top edge past the bottom) —
         # the shot has resolved one way or the other.

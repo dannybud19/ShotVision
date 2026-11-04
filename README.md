@@ -223,8 +223,9 @@ at the box's midline in the middle of the net. It resolves **MAKE** only if that
 crossing falls inside the rim's inner horizontal gate **and** the whole ball
 (its bounding-box top edge) then reaches below the outlined rim without
 bouncing back up. Every ambiguous case — crossing outside the inner gate
-(rim-out), the whole ball reaching below without a valid crossing, an upward
-bounce after reaching the rim, or the shot never resolving — is scored
+(rim-out), the whole ball reaching below without a valid crossing, the ball
+coming back above the rim after crossing inside it (in-and-out,
+`miss_in_and_out`), or the shot never resolving — is scored
 **MISS**, never MAKE.
 
 Why crossing instead of "did a detection land inside the rim band": a
