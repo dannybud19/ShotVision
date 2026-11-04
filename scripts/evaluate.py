@@ -278,14 +278,112 @@ def print_score(score: ClipScore, rep: Replay, verbose: bool) -> None:
         print(f"    BAD spurious {r.outcome.value} @f{r.frame_idx} ({reason}) — no labeled shot here")
 
 
-def load_labels() -> dict[str, list[dict]]:
+def load_labels(split: str = "all", include_duplicates: bool = True) -> dict[str, list[dict]]:
+    """Labeled clips. `split` filters on the clip's "split" field ("dev" when
+    absent). Clips marked "duplicate_of" another clip are dropped unless
+    include_duplicates, so distinct-shot counts aren't inflated."""
     data = json.loads(LABELS_PATH.read_text())
     labeled = {}
     for clip, entry in data["clips"].items():
+        if split != "all" and entry.get("split", "dev") != split:
+            continue
+        if not include_duplicates and entry.get("duplicate_of"):
+            continue
         shots = entry.get("shots", [])
         if shots and all(s.get("outcome") in ("MAKE", "MISS") for s in shots):
             labeled[clip] = shots
     return labeled
+
+
+def load_clip_meta() -> dict[str, dict]:
+    data = json.loads(LABELS_PATH.read_text())
+    return {clip: {k: v for k, v in entry.items() if k != "shots"} for clip, entry in data["clips"].items()}
+
+
+def binomial_upper_bound(k: int, n: int, confidence: float = 0.95) -> float:
+    """One-sided exact (Clopper-Pearson) upper bound on a rate after k events
+    in n trials. With k=0 this is 1 - (1-confidence)^(1/n), about 3/n."""
+    from math import comb
+
+    if n == 0:
+        return 1.0
+    if k >= n:
+        return 1.0
+    alpha = 1 - confidence
+    lo, hi = k / n, 1.0
+    for _ in range(100):
+        mid = (lo + hi) / 2
+        cdf = sum(comb(n, i) * mid ** i * (1 - mid) ** (n - i) for i in range(k + 1))
+        if cdf > alpha:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def _group(meta: dict, clip: str) -> str:
+    src = meta.get("source") or {}
+    return src.get("group") or clip.split("/")[0].split("_")[0]
+
+
+def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make_rate: float = 0.90) -> bool:
+    """Gate A: makes counted / makes, false makes / misses (with the 95% upper
+    bound), by miss type and by source group. Returns pass/fail."""
+    from collections import defaultdict
+
+    makes = counted = misses = false_makes = 0
+    by_type = defaultdict(lambda: [0, 0, 0])  # misses, false makes, resolved MISS
+    by_group = defaultdict(lambda: [0, 0, 0, 0])  # makes, counted, misses, false makes
+    spurious_makes = 0
+    reasons = defaultdict(int)
+    for sc in scores:
+        g = _group(meta.get(sc.clip, {}), sc.clip)
+        for c in sc.checks:
+            got = c.result.outcome.value if c.result is not None else None
+            if c.label["outcome"] == "MAKE":
+                makes += 1
+                by_group[g][0] += 1
+                if got == "MAKE":
+                    counted += 1
+                    by_group[g][1] += 1
+                else:
+                    reasons["make lost: " + (c.result.reason.value if c.result else "never armed")] += 1
+            else:
+                misses += 1
+                t = c.label.get("miss_type") or "untyped"
+                by_type[t][0] += 1
+                by_group[g][2] += 1
+                if got == "MAKE":
+                    false_makes += 1
+                    by_type[t][1] += 1
+                    by_group[g][3] += 1
+                elif got == "MISS":
+                    by_type[t][2] += 1
+        for r in sc.spurious:
+            if r.outcome.value == "MAKE":
+                spurious_makes += 1
+                by_group[g][3] += 1
+
+    total_false = false_makes + spurious_makes
+    ub = binomial_upper_bound(total_false, misses)
+    make_rate = counted / makes if makes else 0.0
+    passed = total_false == 0 and make_rate >= min_make_rate
+    print("\n=== Gate A ===")
+    print(f"Makes counted: {counted}/{makes} ({100 * make_rate:.1f}%)  [need >= {100 * min_make_rate:.0f}%]")
+    print(f"False makes: {false_makes}/{misses} labeled misses, + {spurious_makes} spurious makes "
+          f"-> 95% upper bound on false-make rate {100 * ub:.1f}%  [need 0 false makes]")
+    print("By miss type (misses, false makes, resolved as MISS, 95% UB):")
+    for t, (n, fm, res) in sorted(by_type.items()):
+        print(f"  {t:<14} {n:>4} {fm:>4} {res:>4}  {100 * binomial_upper_bound(fm, n):5.1f}%")
+    print("By source (makes counted/makes, false makes/misses):")
+    for g, (mk, ct, ms, fm) in sorted(by_group.items()):
+        print(f"  {g:<22} {ct:>4}/{mk:<4} {fm:>3}/{ms:<4}")
+    if reasons:
+        print("Lost makes by exit reason:")
+        for r, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            print(f"  {r:<40} {n}")
+    print(f"GATE A: {'PASS' if passed else 'FAIL'}")
+    return passed
 
 
 def parse_args() -> argparse.Namespace:
@@ -297,6 +395,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-coverage", type=float, default=0.6)
     p.add_argument("--max-gap-s", type=float, default=0.2, help="longest allowed ball gap in a make window (6 frames at 30 fps)")
     p.add_argument("-v", "--verbose", action="store_true", help="Show every shot, not just failures")
+    p.add_argument("--split", default="all", help="Only clips with this split (dev | test | all)")
+    p.add_argument("--report", action="store_true",
+                   help="Gate A report (by miss type and source); duplicate clips are excluded")
     return p.parse_args()
 
 
@@ -304,7 +405,7 @@ def main() -> int:
     args = parse_args()
     overrides = dict(item.partition("=")[::2] for item in (args.set or []))
     config = load_config(override_path=args.config, cli_overrides=overrides)
-    labels = load_labels()
+    labels = load_labels(args.split, include_duplicates=not args.report)
     clips = [c for c in labels if not args.clips or c in args.clips]
     if not clips:
         print("No labeled clips to evaluate (labels with outcome '?' are skipped).")
@@ -334,6 +435,8 @@ def main() -> int:
         f"\nSUMMARY: {passed}/{len(scores)} clips pass | {correct}/{shots} labeled shots correct | "
         f"false makes {false_makes} | spurious shots {spurious}"
     )
+    if args.report:
+        return 0 if print_gate_report(scores, load_clip_meta()) else 1
     return 0 if scores and passed == len(scores) else 1
 
 

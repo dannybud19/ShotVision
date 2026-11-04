@@ -1,8 +1,14 @@
 {
-  "_doc": "Ground truth for scripts/evaluate.py. Frame indices are 0-based and inclusive. A make's window spans the final approach to the rim through the ball's exit from the bottom of the net. A clip is evaluated only once every shot's outcome is MAKE or MISS (use \"?\" while unlabeled).",
+  "_doc": "Ground truth for scripts/evaluate.py. Frame indices are 0-based and inclusive. A make's window spans the final approach to the rim through the ball's exit from the bottom of the net. A clip is evaluated only once every shot's outcome is MAKE or MISS (use \"?\" while unlabeled). Clip-level fields: \"split\" (\"dev\" = development data, may be tuned on; \"test\" = held out, never tuned on), \"source\" (group, repo/url, license, camera), \"duplicate_of\" (same footage as another clip; excluded from --report counts). Shot-level \"miss_type\" for misses: front_rim, back_rim, in_and_out, side_rim_out, airball, other.",
   "clips": {
     "chonyy_one_score_one_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:chonyy",
+        "repo": "chonyy/AI-basketball-analysis",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 50,
@@ -19,6 +25,13 @@
     },
     "chonyy_two_score_two_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:chonyy",
+        "repo": "chonyy/AI-basketball-analysis",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
+      "duplicate_of": "chonyy_two_score_three_miss.mp4",
       "shots": [
         {
           "start": 55,
@@ -46,6 +59,12 @@
     },
     "chonyy_two_score_three_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:chonyy",
+        "repo": "chonyy/AI-basketball-analysis",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 55,
@@ -77,6 +96,12 @@
     },
     "video_test_5.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:video_test_5",
+        "repo": "avishah3/AI-Basketball-Shot-Detection-Tracker",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 21,
@@ -263,6 +288,12 @@
     },
     "chonyy_sample_video.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:chonyy",
+        "repo": "chonyy/AI-basketball-analysis",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 49,
@@ -274,6 +305,12 @@
     },
     "lf_shot_detection.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:lf",
+        "repo": "LittleFish-Coder/basketball-sports-ai",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 55,
@@ -339,6 +376,12 @@
     },
     "lf_back.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03; full shot order re-confirmed by user",
+      "split": "dev",
+      "source": {
+        "group": "github:lf",
+        "repo": "LittleFish-Coder/basketball-sports-ai",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 44,
@@ -404,6 +447,12 @@
     },
     "lf_alan.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:lf",
+        "repo": "LittleFish-Coder/basketball-sports-ai",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 479,
@@ -421,6 +470,12 @@
     },
     "artur_vid29.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:artur",
+        "repo": "arturchichorro/bballvision",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 196,
@@ -450,6 +505,12 @@
     },
     "kyle_test_video.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:kyle",
+        "repo": "kylephan5/basketball-shot-tracker",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 88,
@@ -461,6 +522,12 @@
     },
     "aggie_NathanBBall.mov": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
+      "split": "dev",
+      "source": {
+        "group": "github:aggie",
+        "repo": "AggieSportsAnalytics/ShotTracker",
+        "license": "none stated upstream; local dev use only (see sample_clips/SOURCES.md)"
+      },
       "shots": [
         {
           "start": 66,
