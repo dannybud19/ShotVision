@@ -80,6 +80,15 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - Rewrote `docs/tracking-research.md` and `docs/ROADMAP.md`, and added `CLAUDE.md`. The user wants make/miss to work from any angle where hoop, ball and person are visible; the roadmap records the single-camera depth limits that come with that.
 - **Next:** film our own camera at 60 fps with a fast shutter (shot list in the research doc, "Do this next"), and measure with the logic unchanged.
 
+### 2026-11-04 (later) — Phase 1 stage on public footage: items 1-3 done, 4-5 pending
+
+- **In-and-out:** a ball back above the rim after crossing inside it now resolves as `MISS_IN_AND_OUT`. Before and after: 58/65 makes counted, 0 false makes. The exit never fired on the existing clips.
+- **`scripts/label_candidates.py`:** one command turns a clip into a labeling page, and `merge` writes the results into labels.json. Recall: every labeled shot got a card on the 6 clips checked.
+- **Frame-rate independence:** all thresholds are now in seconds or per second. The evaluate output is byte-identical on every 30 and 29.97 fps clip. lf_alan (24 fps) changed only in coverage, by 1%.
+- **`evaluate.py --report`** prints Gate A. labels.json now has split, source, duplicate and miss_type fields. On the distinct legacy set: 56/63 makes counted (88.9%), 0/8 false makes, 95% upper bound 31%. **Gate A FAIL** on make rate.
+- **ROADMAP:** release-moment detection and shooter position moved from Phase 3 into Phase 2.
+- **Not done (usage limit):** item 4 (licensed public misses: a search agent was started and then stopped) and item 5 (Gate A on the bigger set).
+
 ---
 
 ## Tools used

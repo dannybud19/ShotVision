@@ -2,7 +2,11 @@
 
 **Goal:** single-camera basketball analytics. Phase 1 is a make/miss counter for one shooter. Later phases add 2PT/3PT, shot type, multiple players and shot-selection analysis. Full plan: `docs/ROADMAP.md`. Rule: no phase starts until the previous one is reliable on our own footage.
 
-**Current phase: Phase 1, make/miss (blocked).**
+**Current phase: Phase 1, make/miss (blocked).** Stage plan in progress on branch `stage1/label-tooling` (2026-11-04):
+items 1-3 are done (in-and-out MISS, `scripts/label_candidates.py`, seconds-based thresholds); item 6 is partly done (ROADMAP updated).
+Items 4-5 are NOT done: grow the miss set to at least 50 licensed public misses, label them, then run Gate A (`scripts/evaluate.py --report`).
+The Gate A baseline on the distinct legacy set is 56/63 makes (88.9%, FAIL: needs 90%) with 0/8 false makes.
+Public footage may be partly downloaded in `sample_clips/public/` (see SOURCES_public.md there, if it exists); check each file's license before using it.
 - **Score:** 68/75 labeled shots correct, 0 false makes, on 11 third-party clips (`sample_clips/labels.json`). Only 8 of those shots are distinct misses.
 - **Blocker, measured 2026-11-04:** all 7 failures are makes that weren't counted.
   - 6 involve the ball being invisible for 7-25 frames at the rim: blur over the backboard, or hidden in/below the net.
@@ -11,15 +15,15 @@
   - The next step is our own footage: 60 fps, fast shutter, ≥80 misses. Spec, diagnosis and ranked options: `docs/tracking-research.md`.
 - **History:** `docs/PROJECT_LOG.md`, with an entry per session.
 
-**Pipeline** (`shotvision/`): capture → YOLO ball/hoop detection (`detection/`) → `tracking/ball_tracker.py` → `shot_logic/` (`rim_tracker.py`, `state_machine.py`) → `stats/` → `overlay/`. Entry point: `python -m shotvision.main --source <file|0>`. Config: `shotvision/config/default.json`; all thresholds are counted in frames, tuned at 30 fps.
+**Pipeline** (`shotvision/`): capture → YOLO ball/hoop detection (`detection/`) → `tracking/ball_tracker.py` → `shot_logic/` (`rim_tracker.py`, `state_machine.py`) → `stats/` → `overlay/`. Entry point: `python -m shotvision.main --source <file|0>`. Config: `shotvision/config/default.json`; all durations are in seconds (converted to frames with each source's fps; tuned at 30 fps).
 - **Gated nearest-neighbour association, not ByteTrack.** ByteTrack dropped the fast ball and was removed on 2026-11-03.
 - **MAKE requires a fitted crossing inside the inner rim gate, then the whole ball seen below.** Everything else resolves MISS.
 
 **Hardware:** Apple Silicon M2 Pro, PyTorch on MPS. **No CUDA.** Flag any CUDA-only dependency.
 
 **Tests:**
-- `.venv/bin/python -m pytest -q` runs 113 tests. Two of them load `models/basketball_best.pt` (`test_detector_loads_real_basketball_checkpoint_and_predicts`, `test_update_runs_end_to_end_on_blank_frame`).
-- To skip the model, add `--deselect tests/test_detector.py::test_detector_loads_real_basketball_checkpoint_and_predicts --deselect tests/test_ball_tracker.py::test_update_runs_end_to_end_on_blank_frame`. That leaves 111, all passing on 2026-11-04.
+- `.venv/bin/python -m pytest -q` runs 126 tests. Two of them load `models/basketball_best.pt` (`test_detector_loads_real_basketball_checkpoint_and_predicts`, `test_update_runs_end_to_end_on_blank_frame`).
+- To skip the model, add `--deselect tests/test_detector.py::test_detector_loads_real_basketball_checkpoint_and_predicts --deselect tests/test_ball_tracker.py::test_update_runs_end_to_end_on_blank_frame`. That leaves 124, all passing on 2026-11-04.
 
 **Measuring:**
 - `scripts/evaluate.py [-v] [--set key=value]` is the scoreboard. It replays cached detections from `experiments/.cache/detections`.

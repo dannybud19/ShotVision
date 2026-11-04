@@ -56,33 +56,43 @@ Each phase's "single-camera limit" note says what this means for that phase.
 
 ## Phase 2: Shot value (2PT vs 3PT)
 
-**Must do:** a one-time court setup per court, where known court points are marked so any on-screen floor position maps to a real floor position. At the release, find the shooter's foot position, compute the distance from the hoop, and classify the shot as a two or a three. Court dimensions and line distances vary (NBA, FIBA, college, high school, park courts), so calibration and the 3PT line are per court.
+**Must do:**
+- **Release moment:** for every shot Phase 1 counts, find when the ball left the shooter's hands and where the shooter was standing. A two-or-three call is impossible without this, so it belongs here rather than in Phase 3.
+  - Trace the ball back from the shot Phase 1 armed on to the frame it separated from the shooter.
+  - Identify the shooter: the person the ball left.
+  - Take their floor position from the last frame with feet on the floor (take-off), not the release frame.
+- **Court calibration:** a one-time setup per court, where known court points are marked so any on-screen floor position maps to a real floor position.
+- **Two or three:** from the shooter's floor position, compute the distance from the hoop and classify the shot.
+- Court dimensions and line distances vary (NBA, FIBA, college, high school, park courts), so calibration and the 3PT line are per court.
 
-**Depends on:** Phase 1 (the shot and its outcome). It also needs a **release moment** for each shot. A rough version can come from the ball trajectory: the start of the upward flight that later arms the shot. The precise version is Phase 3's job.
+**Depends on:** Phase 1 (the shot and its outcome; the ball track that armed it).
 
-**Hardest technical risk:** the shooter's feet at the release are often in the air or hidden by other players. A floor mapping is valid only for points on the floor, so a jumping player's feet must be taken from the take-off frame, not the release frame. Shots taken near the line are inherently uncertain. They must be flagged "uncertain" rather than guessed, in the same spirit as the MISS bias.
+**Hardest technical risk:** the shooter's feet at the release are often in the air or hidden by other players. A floor mapping is valid only for points on the floor, so a jumping player's feet must come from the take-off frame. That frame is set by the release-moment step, so its error goes straight into the two/three call. The release itself can also be hard to pin down: on a quick shot, or when a defender's hand is near the ball, it isn't obvious when the ball leaves the hands. Shots taken near the line are inherently uncertain. They must be flagged "uncertain" rather than guessed, in the same spirit as the MISS bias.
 
 **Single-camera limit:** the floor mapping needs enough visible court markings, and they must stay visible. Camera bumps invalidate it, so we need a check that warns when the court no longer lines up. The camera must see the shooter's feet *and* the rim with enough ball resolution for Phase 1. That framing decision is shared with Phase 1 and should be tested with Phase 1's footage.
 
-**Data / footage needed:** shots from known, measured floor spots (tape marks at fixed distances), including many within ~0.5 m of the 3PT line. Footage from at least two courts with different dimensions.
+**Data / footage needed:** shots from known, measured floor spots (tape marks at fixed distances), including many within ~0.5 m of the 3PT line. Each needs a labeled release frame and take-off frame. Footage from at least two courts with different dimensions. Include jump shots, set shots and catch-and-shoot, so release timing varies.
 
-**Exit criteria:** at least 97% correct 2/3 calls on shots not flagged uncertain, and shots near the line flagged rather than wrong.
+**Exit criteria:**
+- release frame within a few frames (about 0.1 s) of the label, and shooter position within an agreed distance (e.g. 0.3 m) on held-out shots;
+- at least 97% correct 2/3 calls on shots not flagged uncertain;
+- shots near the line flagged rather than wrong.
 
 ---
 
 ## Phase 3: Shot type
 
-**Must do:** read the shooter's body movement through the shot to classify its type: layup, pull-up jumper, catch-and-shoot, fade-away two, fade-away three, and others. Rare or unclear shots go into an "unknown" bucket. Detect the release moment itself precisely. Start with simple rules on body movement. Examples: a fade-away moves the body away from the hoop at release; a layup is a close, low release after a gather. Move to a learned classifier once enough labeled clips of each type exist.
+**Must do:** read the shooter's body movement through the shot to classify its type: layup, pull-up jumper, catch-and-shoot, fade-away two, fade-away three, and others. Rare or unclear shots go into an "unknown" bucket. It builds on Phase 2's release moment and shooter position rather than finding them again. Start with simple rules on body movement. Examples: a fade-away moves the body away from the hoop at release; a layup is a close, low release after a gather. Move to a learned classifier once enough labeled clips of each type exist.
 
-**Depends on:** Phase 1 (which shots exist) and Phase 2 (distance from the hoop, floor position).
+**Depends on:** Phase 1 (which shots exist) and Phase 2 (release moment, shooter identity, distance from the hoop, floor position).
 
 **Hardest technical risk:** body keypoints from one camera at half-court distance are noisy and get hidden by defenders. Classes such as "fade-away" depend on motion toward or away from the hoop, which can be along the camera axis and so hard to measure from half court. Classes also blur into each other, and labeled examples of rare types accumulate slowly.
 
 **Single-camera limit:** motion toward or away from the camera is poorly measured. Shot-type rules should lean on the floor mapping (Phase 2) for movement over the floor rather than raw image motion.
 
-**Data / footage needed:** labeled clips per shot type. Rules need roughly 20-30 per type to validate. A learned classifier needs on the order of 100+ per type. Each clip needs a release-frame label.
+**Data / footage needed:** labeled clips per shot type. Rules need roughly 20-30 per type to validate. A learned classifier needs on the order of 100+ per type.
 
-**Exit criteria:** a per-type confusion matrix on held-out clips, with an agreed minimum accuracy per type, and release-frame error within a few frames.
+**Exit criteria:** a per-type confusion matrix on held-out clips, with an agreed minimum accuracy per type.
 
 ---
 
@@ -90,7 +100,7 @@ Each phase's "single-camera limit" note says what this means for that phase.
 
 **Must do:** follow every player across a game with consistent identities, credit each shot to whoever released it, and keep running per-player makes, misses and points. Players are tagged by name once at session start.
 
-**Depends on:** Phase 1 (outcomes), Phase 2 (points), and Phase 3 (the release moment and the shooter's hands, for attribution).
+**Depends on:** Phase 1 (outcomes), Phase 2 (points, and the release moment and shooter for each shot), and Phase 3 (body keypoints, to settle attribution when players are close).
 
 **Hardest technical risk:** **identity through occlusion**. In pickup games, players in similar clothing cross, screen and cluster under the basket, and a single camera loses them behind each other. One identity swap wrongly credits every later shot. Attribution at the release is a second risk when two players are close to the ball.
 
