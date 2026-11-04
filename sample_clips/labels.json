@@ -14,7 +14,9 @@
           "start": 50,
           "end": 86,
           "outcome": "MISS",
-          "note": "front-rim bounce, falls left"
+          "note": "front-rim bounce, falls left",
+          "miss_type": "front_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 156,
@@ -37,13 +39,17 @@
           "start": 55,
           "end": 90,
           "outcome": "MISS",
-          "note": "front-rim bounce, falls left"
+          "note": "front-rim bounce, falls left",
+          "miss_type": "front_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 150,
           "end": 195,
           "outcome": "MISS",
-          "note": "rolls on rim, falls left"
+          "note": "rolls on rim, falls left",
+          "miss_type": "side_rim_out",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 262,
@@ -69,18 +75,24 @@
         {
           "start": 55,
           "end": 90,
-          "outcome": "MISS"
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 150,
           "end": 195,
-          "outcome": "MISS"
+          "outcome": "MISS",
+          "miss_type": "side_rim_out",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 262,
           "end": 292,
           "outcome": "MISS",
-          "note": "front-rim bounce-out back toward shooter"
+          "note": "front-rim bounce-out back toward shooter",
+          "miss_type": "front_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 362,
@@ -364,7 +376,9 @@
           "start": 959,
           "end": 1015,
           "outcome": "MISS",
-          "card": "lf_shot_detection_9"
+          "card": "lf_shot_detection_9",
+          "miss_type": "back_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 1081,
@@ -435,7 +449,9 @@
           "start": 948,
           "end": 994,
           "outcome": "MISS",
-          "card": "lf_back_7"
+          "card": "lf_back_7",
+          "miss_type": "side_rim_out",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 1074,
@@ -493,7 +509,9 @@
           "start": 725,
           "end": 772,
           "outcome": "MISS",
-          "card": "artur_vid29_5"
+          "card": "artur_vid29_5",
+          "miss_type": "front_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 795,
@@ -533,7 +551,9 @@
           "start": 66,
           "end": 117,
           "outcome": "MISS",
-          "card": "aggie_NathanBBall_1"
+          "card": "aggie_NathanBBall_1",
+          "miss_type": "back_rim",
+          "miss_type_by": "Claude from contact sheet / existing note, 2026-11-04"
         },
         {
           "start": 205,
