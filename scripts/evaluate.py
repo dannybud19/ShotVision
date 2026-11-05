@@ -20,8 +20,10 @@ Labels format (frame indices are 0-based, inclusive):
   {"clips": {"<file in sample_clips/>": {"shots": [
       {"start": 258, "end": 292, "outcome": "MAKE"}, ...]}}}
 For a make, [start, end] should span the ball's final approach to the rim
-through its exit from the bottom of the net. A clip whose shots include an
-outcome other than MAKE/MISS (e.g. "?") is skipped as not yet labeled.
+through its exit from the bottom of the net. Outcome "IGNORE" marks a window
+the labeler couldn't call (e.g. the ball is hidden): a resolved shot inside it
+is neither scored nor counted as spurious. A clip whose shots include any
+other outcome (e.g. "?") is skipped as not yet labeled.
 
 Usage:
   python scripts/evaluate.py                         # all labeled clips
@@ -231,6 +233,11 @@ def score_clip(
     unmatched = list(rep.results)
     checks: list[ShotCheck] = []
     slack = to_frames(MATCH_SLACK_S, fps)
+    # Resolutions inside IGNORE windows are dropped first: neither scored nor spurious.
+    for shot in shots:
+        if shot["outcome"] == "IGNORE":
+            unmatched = [r for r in unmatched if not shot["start"] <= r.frame_idx <= shot["end"]]
+    shots = [s for s in shots if s["outcome"] != "IGNORE"]
     for shot in sorted(shots, key=lambda s: s["start"]):
         lo, hi = shot["start"] - slack, shot["end"] + slack
         match = next((r for r in unmatched if lo <= r.frame_idx <= hi), None)
@@ -290,7 +297,7 @@ def load_labels(split: str = "all", include_duplicates: bool = True) -> dict[str
         if not include_duplicates and entry.get("duplicate_of"):
             continue
         shots = entry.get("shots", [])
-        if shots and all(s.get("outcome") in ("MAKE", "MISS") for s in shots):
+        if shots and all(s.get("outcome") in ("MAKE", "MISS", "IGNORE") for s in shots):
             labeled[clip] = shots
     return labeled
 

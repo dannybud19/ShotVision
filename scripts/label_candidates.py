@@ -15,7 +15,7 @@ CLIP is a path, or a name relative to sample_clips/. Building the page:
    that makes the pipeline never armed on still get a card; mark the rest
    NOT A SHOT.
 4. Writes sample_clips/_label/<clip stem>/: one contact sheet per candidate
-   (crops around the hoop, every k-th frame, with the frame number, the
+   of at most 3 s (crops around the hoop, one frame per 0.1 s, with the frame number, the
    tracked ball in orange and the hoop box in green), a full-frame context
    thumbnail, candidates.json and index.html.
 
@@ -28,11 +28,13 @@ it doesn't anchor the labeler.
 Export / merge format (one clip per file; frames are 0-based, inclusive):
   {"clip": "<file name in sample_clips/>", "fps": 30.0,
    "labeled_by": "...", "split": "dev", "source": {...optional provenance...},
-   "shots": [{"start": 258, "end": 292, "outcome": "MAKE"|"MISS"|"NOT_A_SHOT"|"?",
+   "shots": [{"start": 258, "end": 292, "outcome": "MAKE"|"MISS"|"NOT_A_SHOT"|"IGNORE"|"?",
               "miss_type": "front_rim"|"back_rim"|"in_and_out"|"side_rim_out"|
                            "airball"|"other"|null,
               "note": "...", "card": 3}]}
-`merge` keeps MAKE and MISS shots, drops NOT_A_SHOT, and refuses "?" unless
+`merge` keeps MAKE, MISS and IGNORE (a shot that can't be called from the
+frames: evaluate.py neither scores it nor counts it as spurious), drops
+NOT_A_SHOT, and refuses "?" unless
 --allow-unlabeled is given (evaluate.py skips a clip that has any "?"). It
 refuses to overwrite an existing clip entry unless --force is given.
 For a MAKE, start/end should span the final approach to the rim through the
@@ -66,6 +68,8 @@ JOIN_GAP_S = 0.6         # near-hoop detections closer than this are one episode
 PAD_S = 0.35             # padding added to both ends of a window
 MIN_SPAN_WIDTHS = 0.8    # the ball must move at least this far (hoop widths)
 MAX_WINDOW_S = 4.0       # longer episodes are split at their biggest gap
+MAX_CARD_S = 3.0         # longer windows (after merging) become several cards
+SAMPLE_STEP_S = 0.1      # contact sheets show one frame per 0.1 s
 
 
 def _rim_units(x, y, rim):
@@ -137,6 +141,17 @@ def find_candidates(dets, rep, fps, conf):
         else:
             merged.append(list(w))
 
+    # A window that is still long (e.g. a false positive near the hoop kept it
+    # open) is cut into consecutive cards so each card is sampled densely.
+    card_len = round(MAX_CARD_S * fps)
+    chunks = []
+    for lo, hi in merged:
+        while hi - lo + 1 > card_len:
+            chunks.append([lo, lo + card_len - 1])
+            lo += card_len - pad  # overlap by the padding so no shot is cut in two
+        chunks.append([lo, hi])
+    merged = chunks
+
     out = []
     for i, (lo, hi) in enumerate(merged):
         res = [r for r in rep.results if lo <= r.frame_idx <= hi]
@@ -172,12 +187,11 @@ def _crop_box(rim, shape):
     return x0, y0, x1, y1
 
 
-def build_sheets(path, rep, cands, out_dir, frames_per_card, cell_w=240, cols=6):
+def build_sheets(path, rep, cands, out_dir, fps, cell_w=240, cols=6):
     sample = {}
+    step = max(1, round(SAMPLE_STEP_S * fps))
     for c in cands:
-        span = list(range(c["start"], c["end"] + 1))
-        step = max(1, -(-len(span) // frames_per_card))
-        sample[c["card"]] = span[::step]
+        sample[c["card"]] = list(range(c["start"], c["end"] + 1))[::step]
     wanted = {f for fs in sample.values() for f in fs} | {c["start"] for c in cands}
     imgs = _read_frames(path, wanted)
     import numpy as np
@@ -270,7 +284,7 @@ for (const c of DATA.cands) {
     <img src="card_${pid}.jpg" loading="lazy" alt="hoop crops for card ${c.card}">
     <details><summary class="muted">full frame</summary><img src="ctx_${pid}.jpg" loading="lazy" alt="context"></details>
     <div class="row">
-      <button data-o="MAKE">MAKE</button><button data-o="MISS">MISS</button><button data-o="NOT_A_SHOT">NOT A SHOT</button><button data-o="?">?</button>
+      <button data-o="MAKE">MAKE</button><button data-o="MISS">MISS</button><button data-o="NOT_A_SHOT">NOT A SHOT</button><button data-o="IGNORE">CAN'T TELL</button>
       <select class="mt"><option value="">miss type…</option>${DATA.missTypes.map(t=>`<option>${t}</option>`).join("")}</select>
       start <input type="number" class="st"> end <input type="number" class="en">
     </div>
@@ -318,7 +332,9 @@ def build(args) -> int:
     cands = find_candidates(dets, rep, fps, config.model.conf)
     out_dir = OUT_ROOT / path.stem
     out_dir.mkdir(parents=True, exist_ok=True)
-    build_sheets(path, rep, cands, out_dir, args.frames_per_card)
+    for old in out_dir.glob("*.jpg"):
+        old.unlink()
+    build_sheets(path, rep, cands, out_dir, fps)
     (out_dir / "candidates.json").write_text(json.dumps(
         {"clip": str(rel), "fps": fps, "frames": len(rep.frames), "cands": cands}, indent=1))
     data = {"clip": str(rel), "stem": path.stem, "fps": round(fps, 3), "cands": cands, "missTypes": MISS_TYPES}
@@ -338,7 +354,7 @@ def merge(args) -> int:
     for s in data["shots"]:
         if s["outcome"] == "NOT_A_SHOT":
             continue
-        if s["outcome"] not in ("MAKE", "MISS") and not args.allow_unlabeled:
+        if s["outcome"] not in ("MAKE", "MISS", "IGNORE") and not args.allow_unlabeled:
             print(f"card {s.get('card')} is '{s['outcome']}': label it, or pass --allow-unlabeled")
             return 1
         if s["outcome"] == "MISS" and s.get("miss_type") not in MISS_TYPES:
@@ -374,7 +390,6 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("clip")
     p.add_argument("--cache-only", action="store_true")
-    p.add_argument("--frames-per-card", type=int, default=24)
     return build(p.parse_args())
 
 
