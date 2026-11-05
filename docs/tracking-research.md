@@ -2,7 +2,69 @@
 
 Rewritten 2026-11-04. Earlier versions, from 2026-07-24 and 2026-08-12, diagnosed an arming or scoring bug. That diagnosis was later shown to be a downstream effect of ByteTrack dropping the fast ball, and it is superseded. They remain in git history (e.g. `git show 444544e:docs/tracking-research.md`).
 
-**Bottom line:** no new model is justified by the evidence today, and neither is more threshold tuning on third-party clips. The measured failures are makes lost while the ball is invisible at the rim. Every logic change that would rescue them is make-favourable, and the 8 distinct labeled misses we have cannot show such a change is safe. The highest-value next step is **better input plus a real miss set**: film our own camera at 60 fps with a fast shutter, using the shot list in "Do this next".
+**Update 2026-11-05:** Gate A on public footage fails, and the dominant failure there is the tracker following the wrong object (Section 0). Read that first.
+
+**Bottom line (2026-11-04):** no new model is justified by the evidence today, and neither is more threshold tuning on third-party clips. The measured failures are makes lost while the ball is invisible at the rim. Every logic change that would rescue them is make-favourable, and the 8 distinct labeled misses we have cannot show such a change is safe. The highest-value next step is **better input plus a real miss set**: film our own camera at 60 fps with a fast shutter, using the shot list in "Do this next".
+
+---
+
+## 0. Gate A on public footage (2026-11-05) — FAIL
+
+Run: `python scripts/evaluate.py --report` (duplicates excluded). Data is dev-only:
+- the 11 legacy GitHub clips;
+- one full CC BY 4.0 high-school game: elevated sideline broadcast camera, pans and zooms, 1080p60;
+- two CC BY 3.0 practice clips: floor level, 60 fps.
+
+Provenance is in `sample_clips/SOURCES.md`. The new labels are **Claude-made from contact sheets** (subagents, with Claude spot-checking every pipeline/label disagreement that involved a make). **No human has verified them.**
+
+| | Result | Gate |
+|---|---|---|
+| Makes counted | **90/137 (65.7%)** | ≥ 90%: **fail** |
+| False makes | **2 / 46 distinct misses** (exact 95% upper bound 13.1%), 0 spurious makes | 0: **fail** |
+| Spurious shots | 13, all resolved MISS (the pipeline arming on lobs, passes and camera pans) | |
+
+| Source | Makes counted | False makes / misses |
+|---|---|---|
+| Hardwick game (panning broadcast) | 21/43 | 1/31 |
+| Bandits practice (multiple balls) | 13/31 | 1/7 |
+| Legacy GitHub clips | 56/63 | 0/8 |
+
+By miss type (misses / false makes): front_rim 20/0, back_rim 13/0, side_rim_out 6/0, airball 1/0, other 6/2. Both false makes are typed "other". There are no labeled in-and-outs, so the in-and-out exit is still unexercised on real footage.
+
+**The two false makes (both checked frame by frame):**
+- **Hardwick card 18 (f39311):** the ball hits the rim and bounces high above the backboard; the scoreboard stays 6-0. The pipeline scored MAKE at f39440 after the tracker followed a dark patch on the backboard.
+- **Bandits 01 card 3 (f2251):** during a fast pan the ball falls away left of the rim. The pipeline scored MAKE at f2279 after the tracker followed **a man's head** under the hoop.
+
+In both, the **tracker followed a non-ball object** below the rim, and the state machine took it for the ball dropping through. This is the same weakness iteration 6 patched for heads (track identity), now under a moving camera.
+
+**Lost makes, by exit reason:** never armed 41, miss_occlusion_gap 3, miss_rim_out_sideways 2, miss_below_without_inner 1.
+
+The never-armed makes on the public clips, by layer (`experiments/shot_diagnostics.py` logic):
+
+| Layer | Count | What it means |
+|---|---|---|
+| **TRACKER** | 24 | the detector saw the ball above the rim at conf ≥ 0.15, but the tracker was following something else |
+| DETECTOR | 8 | the ball is never confidently above the rim |
+| LOGIC | 5 | followed above the rim, but no arm (descent/streak rule) |
+
+The traced TRACKER cases share one mechanism: **the tracker locks onto another confident ball-like object and won't switch.**
+- Examples are a ball resting on the floor or a rack (box width 72 px against the shot ball's ~20 px), or a second ball in a practice.
+- The switch rule only lets go of a followed object that is weak or stale.
+- The stationary filter can't catch a resting ball when the camera pans, because the ball moves on screen.
+- The single-ball assumption, true on the solo-shooter clips we tuned on, fails with several balls, warm-ups, racks and a moving camera.
+
+**What this changes:** the next fix is not detection, thresholds or 60 fps. It is **shot-centric ball selection**: choose or arm on the ball candidate that approaches the hoop, rather than one global "followed ball". It needs these guards:
+- size consistency with the hoop (a 72 px object is not a 20 px ball near a 40 px rim);
+- no adopting a below-rim object that wasn't seen coming from above (this is what produced both false makes);
+- per-candidate tracks, so a second ball can't replace the shot ball.
+
+This is a tracker change in the tested pipeline, so per the stage rules it was **not** made. It's the recommended next step, to be validated with this same Gate A report: 0 false makes is required, and the tracker change must not lower the legacy 56/63.
+
+**Limits of this measurement:**
+- **Labels:** made by Claude, not a human. 33 windows were marked can't-tell and dropped.
+- **Miss count:** 46 distinct misses, short of the 50 target. Bandits 03 (98 cards) is unlabeled, and 20 more CC BY 4.0 Hardwick games are on Commons.
+- **Candidate recall:** candidates come from the detector, so a make it never sees near the hoop gets no card and no label. That biases makes counted upward on the game, not downward.
+- **Camera:** the game camera pans. It approximates "elevated, far from the hoop", but it is not the fixed camera Phase 1 targets.
 
 ---
 

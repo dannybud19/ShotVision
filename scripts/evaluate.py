@@ -62,8 +62,13 @@ LABELS_PATH = CLIPS_DIR / "labels.json"
 CACHE_DIR = REPO_ROOT / "experiments" / ".cache" / "detections"
 
 # A resolved shot matches a labeled shot if its resolution frame falls in the
-# labeled window, widened by this much on each side (15 frames at 30 fps).
+# labeled window, widened by MATCH_SLACK_S before it (15 frames at 30 fps) and
+# MATCH_SLACK_AFTER_S after it: a shot can only resolve after the ball reaches
+# the rim, and with the ball hidden in the net the state machine resolves
+# up to ~1 s after the labeled exit (measured: 31-36 frames late at 60 fps on
+# the Hazen game, 27 frames at 30 fps on video_test_5 f3104).
 MATCH_SLACK_S = 0.5
+MATCH_SLACK_AFTER_S = 1.0
 
 
 def clip_fps(clip: Path) -> float:
@@ -233,13 +238,16 @@ def score_clip(
     unmatched = list(rep.results)
     checks: list[ShotCheck] = []
     slack = to_frames(MATCH_SLACK_S, fps)
-    # Resolutions inside IGNORE windows are dropped first: neither scored nor spurious.
+    slack_after = to_frames(MATCH_SLACK_AFTER_S, fps)
+    # Resolutions inside IGNORE windows (same slack as scored windows) are
+    # dropped first: neither scored nor spurious.
     for shot in shots:
         if shot["outcome"] == "IGNORE":
-            unmatched = [r for r in unmatched if not shot["start"] <= r.frame_idx <= shot["end"]]
+            lo, hi = shot["start"] - slack, shot["end"] + slack_after
+            unmatched = [r for r in unmatched if not lo <= r.frame_idx <= hi]
     shots = [s for s in shots if s["outcome"] != "IGNORE"]
     for shot in sorted(shots, key=lambda s: s["start"]):
-        lo, hi = shot["start"] - slack, shot["end"] + slack
+        lo, hi = shot["start"] - slack, shot["end"] + slack_after
         match = next((r for r in unmatched if lo <= r.frame_idx <= hi), None)
         if match is not None:
             unmatched.remove(match)

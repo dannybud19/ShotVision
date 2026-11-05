@@ -586,6 +586,1098 @@
           "card": "aggie_NathanBBall_6"
         }
       ]
+    },
+    "public/commons_hardwick/hazen_girls_v_lyndon_2026-02-04.webm": {
+      "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
+      "split": "dev",
+      "source": {
+        "group": "commons:hardwick_game",
+        "url": "https://commons.wikimedia.org/wiki/File:Girls_Varsity_Basketball_v._Lyndon_-_February_4,_2026.webm",
+        "license": "CC BY 4.0",
+        "attribution": "Hardwick Community Television (HCTV)",
+        "camera": "elevated sideline broadcast camera, pans/zooms, 1080p60"
+      },
+      "shots": [
+        {
+          "start": 1387,
+          "end": 1447,
+          "outcome": "MAKE",
+          "note": "ball arcs up then drops through net, exits bottom",
+          "card": 2
+        },
+        {
+          "start": 1858,
+          "end": 1888,
+          "outcome": "MAKE",
+          "note": "ball falls into rim, blurred in net, exits below; less clear",
+          "card": 3
+        },
+        {
+          "start": 2384,
+          "end": 2449,
+          "outcome": "IGNORE",
+          "note": "ball crosses in front of backboard high, no clear shot outcome",
+          "card": 4
+        },
+        {
+          "start": 3460,
+          "end": 3567,
+          "outcome": "IGNORE",
+          "note": "card image file missing, not viewed",
+          "card": 5
+        },
+        {
+          "start": 5339,
+          "end": 5369,
+          "outcome": "MAKE",
+          "note": "ball drops into net, exits below",
+          "card": 6
+        },
+        {
+          "start": 6339,
+          "end": 6422,
+          "outcome": "IGNORE",
+          "note": "card image file missing, not viewed",
+          "card": 7
+        },
+        {
+          "start": 7587,
+          "end": 7623,
+          "outcome": "MAKE",
+          "note": "ball drops into rim and through net",
+          "card": 9
+        },
+        {
+          "start": 29978,
+          "end": 30044,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball hits right edge of backboard and bounces away right; not fully clear",
+          "card": 10
+        },
+        {
+          "start": 34705,
+          "end": 34776,
+          "outcome": "IGNORE",
+          "note": "ball leaves rim area to right, shot start before card; unclear",
+          "card": 14
+        },
+        {
+          "start": 35884,
+          "end": 35920,
+          "outcome": "MAKE",
+          "note": "ball drops through rim and net",
+          "card": 15
+        },
+        {
+          "start": 39311,
+          "end": 39380,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "relabeled by Claude: hits rim at f39335, bounces high above the backboard; scoreboard stays 6-0 (pipeline called MAKE)",
+          "card": 18
+        },
+        {
+          "start": 43513,
+          "end": 43555,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball from right hits near rim and bounces back right and down",
+          "card": 20
+        },
+        {
+          "start": 44815,
+          "end": 44851,
+          "outcome": "MAKE",
+          "note": "ball falls behind glass then through net, exits below",
+          "card": 21
+        },
+        {
+          "start": 45031,
+          "end": 45085,
+          "outcome": "IGNORE",
+          "note": "ball arcs up right, crosses backboard, drops left side; unclear if rim contact",
+          "card": 22
+        },
+        {
+          "start": 46620,
+          "end": 46680,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball hits rim and bounces back left",
+          "card": 23
+        },
+        {
+          "start": 47684,
+          "end": 47720,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball falls past right of net behind rim, not through net; uncertain",
+          "card": 24
+        },
+        {
+          "start": 49693,
+          "end": 49741,
+          "outcome": "MAKE",
+          "note": "ball drops into net and out below",
+          "card": 27
+        },
+        {
+          "start": 53810,
+          "end": 53888,
+          "outcome": "IGNORE",
+          "note": "ball falls along left edge of hoop, cannot tell if through net",
+          "card": 29
+        },
+        {
+          "start": 55211,
+          "end": 55241,
+          "outcome": "MAKE",
+          "note": "ball drops behind glass to rim and through net",
+          "card": 31
+        },
+        {
+          "start": 56887,
+          "end": 56917,
+          "outcome": "MAKE",
+          "note": "ball drops through rim and net, exits below",
+          "card": 32
+        },
+        {
+          "start": 57381,
+          "end": 57429,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball falls past right/back of rim, not through net; uncertain",
+          "card": 33
+        },
+        {
+          "start": 57880,
+          "end": 57922,
+          "outcome": "IGNORE",
+          "note": "ball rises from lower right to rim level and falls outside net; unclear",
+          "card": 34
+        },
+        {
+          "start": 59551,
+          "end": 59599,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "ball rolls across top of rim and falls off right/back side",
+          "card": 35
+        },
+        {
+          "start": 60488,
+          "end": 60524,
+          "outcome": "MAKE",
+          "note": "ball drops into net and out below",
+          "card": 36
+        },
+        {
+          "start": 62767,
+          "end": 62803,
+          "outcome": "MAKE",
+          "note": "ball through rim and net",
+          "card": 37
+        },
+        {
+          "start": 65814,
+          "end": 65874,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball drops behind glass and falls past backboard side of net, not through net; uncertain",
+          "card": 42
+        },
+        {
+          "start": 69994,
+          "end": 70047,
+          "outcome": "IGNORE",
+          "note": "net swaying at card start, ball drops out below; shot before card",
+          "card": 44
+        },
+        {
+          "start": 71281,
+          "end": 71359,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball off backboard, drops over front rim and falls outside net left",
+          "card": 45
+        },
+        {
+          "start": 73233,
+          "end": 73281,
+          "outcome": "MISS",
+          "miss_type": "airball",
+          "note": "ball rises from left shooters, falls left of hoop; uncertain",
+          "card": 46
+        },
+        {
+          "start": 74616,
+          "end": 74658,
+          "outcome": "MAKE",
+          "note": "ball drops through rim and net",
+          "card": 48
+        },
+        {
+          "start": 77888,
+          "end": 77936,
+          "outcome": "MAKE",
+          "note": "ball drops through rim and net",
+          "card": 51
+        },
+        {
+          "start": 78875,
+          "end": 78905,
+          "outcome": "MAKE",
+          "note": "ball drops through net",
+          "card": 52
+        },
+        {
+          "start": 79785,
+          "end": 79857,
+          "outcome": "MISS",
+          "miss_type": "side_rim_out",
+          "note": "ball skims rim top and rolls off to far side",
+          "card": 53
+        },
+        {
+          "start": 80428,
+          "end": 80575,
+          "outcome": "IGNORE",
+          "note": "ball near rim right side while camera pans; cannot follow",
+          "card": 54
+        },
+        {
+          "start": 81044,
+          "end": 81102,
+          "outcome": "IGNORE",
+          "note": "ball falls right of hoop as camera pans; shot not followable",
+          "card": 56
+        },
+        {
+          "start": 90190,
+          "end": 90238,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "high arc lands on rim and bounces off away from backboard",
+          "card": 59
+        },
+        {
+          "start": 90797,
+          "end": 90899,
+          "outcome": "IGNORE",
+          "note": "ball near/behind backboard 90797-90899, can't tell outcome; may continue card 59",
+          "card": 60
+        },
+        {
+          "start": 94430,
+          "end": 94496,
+          "outcome": "IGNORE",
+          "note": "ball rises from below, bounces around rim, unclear",
+          "card": 62
+        },
+        {
+          "start": 94743,
+          "end": 94791,
+          "outcome": "MAKE",
+          "note": "ball drops through net; score 17->19",
+          "card": 63
+        },
+        {
+          "start": 97203,
+          "end": 97263,
+          "outcome": "MAKE",
+          "note": "rim bounces then drops through net",
+          "card": 65
+        },
+        {
+          "start": 104985,
+          "end": 104997,
+          "outcome": "IGNORE",
+          "note": "ball flies past rim level from left, can't tell",
+          "card": 68
+        },
+        {
+          "start": 108544,
+          "end": 108580,
+          "outcome": "MAKE",
+          "note": "ball drops from right of board into rim and net, no bounce out seen",
+          "card": 70
+        },
+        {
+          "start": 108668,
+          "end": 108716,
+          "outcome": "MAKE",
+          "note": "off backboard, in net",
+          "card": 71
+        },
+        {
+          "start": 109561,
+          "end": 109639,
+          "outcome": "IGNORE",
+          "note": "high ball passes over backboard, unclear shot",
+          "card": 73
+        },
+        {
+          "start": 111339,
+          "end": 111387,
+          "outcome": "IGNORE",
+          "note": "ball near rim/net, confusing, can't tell",
+          "card": 74
+        },
+        {
+          "start": 114814,
+          "end": 114855,
+          "outcome": "MAKE",
+          "note": "ball circles rim then drops through net (seen on card 77)",
+          "card": 76
+        },
+        {
+          "start": 116941,
+          "end": 116965,
+          "outcome": "IGNORE",
+          "note": "net moving, ball falling out of/under net, no clear approach; can't tell",
+          "card": 78
+        },
+        {
+          "start": 120008,
+          "end": 120050,
+          "outcome": "IGNORE",
+          "note": "ball bounces around rim after previous make; can't tell if through",
+          "card": 80
+        },
+        {
+          "start": 120897,
+          "end": 120927,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball comes down at back/left of rim, falls out beside net; low confidence",
+          "card": 81
+        },
+        {
+          "start": 122514,
+          "end": 122544,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "short ball hits front-right rim and drops outside net; could be airball",
+          "card": 83
+        },
+        {
+          "start": 123301,
+          "end": 123367,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball hits rim from above and bounces back up toward shooter",
+          "card": 84
+        },
+        {
+          "start": 124558,
+          "end": 124588,
+          "outcome": "MAKE",
+          "note": "ball drops into rim and out bottom of net",
+          "card": 85
+        },
+        {
+          "start": 126694,
+          "end": 126742,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball at rim top then drops/bounces out to the left (shooter side)",
+          "card": 86
+        },
+        {
+          "start": 126786,
+          "end": 126840,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "ball stays left of rim, falls short, never inside net; may touch front rim",
+          "card": 87
+        },
+        {
+          "start": 126903,
+          "end": 126957,
+          "outcome": "MISS",
+          "miss_type": "side_rim_out",
+          "note": "ball rolls on rim ~0.3s and falls out right of net",
+          "card": 88
+        },
+        {
+          "start": 128478,
+          "end": 128526,
+          "outcome": "IGNORE",
+          "note": "ball hovers at rim/glass then drops below; scoreboard unchanged, can't tell",
+          "card": 89
+        },
+        {
+          "start": 129104,
+          "end": 129164,
+          "outcome": "MAKE",
+          "note": "ball hits rim, drops into net, net bulges",
+          "card": 90
+        },
+        {
+          "start": 165365,
+          "end": 165413,
+          "outcome": "MAKE",
+          "note": "ball drops from above into rim and through net; a second ball crosses earlier",
+          "card": 93
+        },
+        {
+          "start": 165649,
+          "end": 165679,
+          "outcome": "MAKE",
+          "note": "ball drops from above through hoop, below net at 165673",
+          "card": 94
+        },
+        {
+          "start": 170132,
+          "end": 170180,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "ball rolls on rim ~0.3s then drops out left of net (board side); low confidence",
+          "card": 96
+        },
+        {
+          "start": 173419,
+          "end": 173509,
+          "outcome": "IGNORE",
+          "note": "ball slowly crosses glass then drops away right of hoop; can't tell",
+          "card": 99
+        },
+        {
+          "start": 175279,
+          "end": 175303,
+          "outcome": "IGNORE",
+          "note": "blurred ball drifts around left rim area, can't tell",
+          "card": 102
+        },
+        {
+          "start": 175691,
+          "end": 175757,
+          "outcome": "MAKE",
+          "note": "ball arcs over, drops through rim and net",
+          "card": 103
+        },
+        {
+          "start": 178692,
+          "end": 178740,
+          "outcome": "MAKE",
+          "note": "rim rattle/bounce then drops into net and out bottom; moderate confidence",
+          "card": 104
+        },
+        {
+          "start": 179375,
+          "end": 179423,
+          "outcome": "MAKE",
+          "note": "ball drops from right into rim and net, net sways after; moderate confidence",
+          "card": 105
+        },
+        {
+          "start": 183059,
+          "end": 183119,
+          "outcome": "MAKE",
+          "note": "ball rattles in rim/net, falls out the bottom of net",
+          "card": 107
+        },
+        {
+          "start": 184334,
+          "end": 184400,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball hits rim then bounces up and out away from hoop to the right",
+          "card": 110
+        },
+        {
+          "start": 187099,
+          "end": 187129,
+          "outcome": "MAKE",
+          "note": "ball at rim then drops below net, net sways; moderate confidence",
+          "card": 111
+        },
+        {
+          "start": 189011,
+          "end": 189077,
+          "outcome": "MAKE",
+          "note": "putback-style ball drops from above through rim and net",
+          "card": 112
+        },
+        {
+          "start": 192504,
+          "end": 192546,
+          "outcome": "IGNORE",
+          "note": "ball crosses past rim, possible rim deflection, can't tell",
+          "card": 114
+        },
+        {
+          "start": 196022,
+          "end": 196088,
+          "outcome": "IGNORE",
+          "note": "ball descends to near rim/board then goes back up left; unclear if shot",
+          "card": 115
+        },
+        {
+          "start": 203765,
+          "end": 203849,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball hits rim, bounces high toward shooter, comes back down, rim again and falls out; low-moderate confidence",
+          "card": 119
+        },
+        {
+          "start": 204382,
+          "end": 204418,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball drops at front of rim and falls outside net to left; unsure",
+          "card": 122
+        },
+        {
+          "start": 204700,
+          "end": 204748,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "hits rim, up to backboard, bounces out right",
+          "card": 123
+        },
+        {
+          "start": 206428,
+          "end": 206476,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "hits near rim, falls outside net to left",
+          "card": 125
+        },
+        {
+          "start": 210114,
+          "end": 210138,
+          "outcome": "MAKE",
+          "note": "ball at rim then below net, falls straight down",
+          "card": 126
+        },
+        {
+          "start": 217245,
+          "end": 217311,
+          "outcome": "IGNORE",
+          "note": "bank off backboard; ball at rim then drops left of net, make vs miss unclear",
+          "card": 128
+        },
+        {
+          "start": 218182,
+          "end": 218206,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "ball falls short, passes left of rim outside net; unsure",
+          "card": 129
+        },
+        {
+          "start": 229265,
+          "end": 229301,
+          "outcome": "MAKE",
+          "note": "off backboard, ball at rim then below net",
+          "card": 131
+        },
+        {
+          "start": 230754,
+          "end": 230808,
+          "outcome": "IGNORE",
+          "note": "ball near backboard left then flies away left, unclear",
+          "card": 133
+        },
+        {
+          "start": 235627,
+          "end": 235705,
+          "outcome": "MAKE",
+          "note": "ball bounces on backboard, drops to rim and out bottom of net; moderate confidence",
+          "card": 136
+        },
+        {
+          "start": 236574,
+          "end": 236640,
+          "outcome": "MAKE",
+          "note": "off backboard, down through net",
+          "card": 138
+        },
+        {
+          "start": 237519,
+          "end": 237585,
+          "outcome": "MAKE",
+          "note": "rolls over rim, drops through net",
+          "card": 139
+        },
+        {
+          "start": 238472,
+          "end": 238502,
+          "outcome": "MAKE",
+          "note": "ball through net",
+          "card": 141
+        },
+        {
+          "start": 241717,
+          "end": 241741,
+          "outcome": "MISS",
+          "miss_type": "side_rim_out",
+          "note": "hits rim, bounces off right",
+          "card": 143
+        },
+        {
+          "start": 242556,
+          "end": 242622,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "off rim/backboard, bounces up and right out",
+          "card": 144
+        },
+        {
+          "start": 244224,
+          "end": 244272,
+          "outcome": "IGNORE",
+          "note": "ball drops by rim left, hidden, make vs miss unclear",
+          "card": 145
+        },
+        {
+          "start": 246640,
+          "end": 246700,
+          "outcome": "IGNORE",
+          "note": "ball loops around backboard area, camera zooming, cannot follow",
+          "card": 146
+        },
+        {
+          "start": 247835,
+          "end": 247913,
+          "outcome": "MAKE",
+          "note": "ball bounces on backboard, drops to rim and through net",
+          "card": 147
+        },
+        {
+          "start": 249929,
+          "end": 249971,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "ball hits rim/backboard side, falls outside net",
+          "card": 151
+        },
+        {
+          "start": 252620,
+          "end": 252692,
+          "outcome": "MAKE",
+          "note": "off backboard side, to rim and through net",
+          "card": 153
+        },
+        {
+          "start": 254570,
+          "end": 254636,
+          "outcome": "MISS",
+          "miss_type": "side_rim_out",
+          "note": "ball at rim top, bounces right and falls outside",
+          "card": 155
+        },
+        {
+          "start": 259183,
+          "end": 259255,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "hits near rim, bounces back out right and falls",
+          "card": 159
+        },
+        {
+          "start": 260091,
+          "end": 260139,
+          "outcome": "IGNORE",
+          "note": "ball drops beside left edge of net, make vs miss unclear",
+          "card": 161
+        },
+        {
+          "start": 260986,
+          "end": 261022,
+          "outcome": "IGNORE",
+          "note": "ball falls at right edge of net during camera pan, unclear",
+          "card": 162
+        },
+        {
+          "start": 261067,
+          "end": 261127,
+          "outcome": "MAKE",
+          "note": "ball falls into net and out bottom",
+          "card": 163
+        },
+        {
+          "start": 261460,
+          "end": 261550,
+          "outcome": "IGNORE",
+          "note": "card image file missing, not labeled",
+          "card": 164
+        },
+        {
+          "start": 263145,
+          "end": 263199,
+          "outcome": "MAKE",
+          "note": "ball into net, out bottom, caught",
+          "card": 165
+        },
+        {
+          "start": 263711,
+          "end": 263759,
+          "outcome": "IGNORE",
+          "note": "ball arrives from upper right near rim and bounces away right; unclear",
+          "card": 166
+        },
+        {
+          "start": 263955,
+          "end": 263997,
+          "outcome": "MAKE",
+          "note": "ball drops to rim, through net",
+          "card": 168
+        },
+        {
+          "start": 265206,
+          "end": 265242,
+          "outcome": "IGNORE",
+          "note": "ball at rim at far left edge, tip/scramble, unclear",
+          "card": 170
+        },
+        {
+          "start": 266484,
+          "end": 266532,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball reaches front of rim and drops back left; unsure",
+          "card": 171
+        },
+        {
+          "start": 269197,
+          "end": 269263,
+          "outcome": "MAKE",
+          "note": "ball into rim, through net, out bottom",
+          "card": 174
+        },
+        {
+          "start": 270840,
+          "end": 270912,
+          "outcome": "IGNORE",
+          "note": "high arc, ball reaches rim area during zoom, vanishes; unclear",
+          "card": 176
+        },
+        {
+          "start": 271517,
+          "end": 271565,
+          "outcome": "MAKE",
+          "note": "ball drops into rim, through net",
+          "card": 177
+        },
+        {
+          "start": 274122,
+          "end": 274182,
+          "outcome": "MAKE",
+          "note": "ball descends into net, then gone below; moderate confidence",
+          "card": 178
+        }
+      ]
+    },
+    "public/commons_bandits/bandits_practice_02.webm": {
+      "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
+      "split": "dev",
+      "source": {
+        "group": "commons:bandits_practice",
+        "license": "CC BY 3.0",
+        "attribution": "Shotbug Press",
+        "camera": "floor level behind/beside hoop, handheld-ish, 720p60",
+        "url": "https://commons.wikimedia.org/wiki/File:ShotBug_Press_LIVE!_at_the_Langley_Event_Centre_for_the_Vancouver_Bandits_first_practice_of_the_year_02.webm"
+      },
+      "shots": [
+        {
+          "start": 2561,
+          "end": 2585,
+          "outcome": "MAKE",
+          "note": "drops through net near backboard side, net whips up",
+          "card": 0
+        },
+        {
+          "start": 3004,
+          "end": 3034,
+          "outcome": "MAKE",
+          "note": "ball seen inside net, exits bottom, net flips",
+          "card": 1
+        },
+        {
+          "start": 3405,
+          "end": 3429,
+          "outcome": "MAKE",
+          "note": "through net, net strands over ball",
+          "card": 2
+        },
+        {
+          "start": 3985,
+          "end": 4009,
+          "outcome": "MAKE",
+          "note": "through net, net strands over ball",
+          "card": 3
+        },
+        {
+          "start": 4406,
+          "end": 4436,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "ball reverses just right of rim (front side) and bounces back toward shooter; contact not directly visible",
+          "card": 4
+        },
+        {
+          "start": 4739,
+          "end": 4829,
+          "outcome": "MAKE",
+          "note": "bounces high on rim several times then drops through net",
+          "card": 5
+        },
+        {
+          "start": 5410,
+          "end": 5458,
+          "outcome": "MAKE",
+          "note": "rolls on rim near backboard then drops through net",
+          "card": 7
+        },
+        {
+          "start": 5596,
+          "end": 5632,
+          "outcome": "MAKE",
+          "note": "layup after bounce pass; ball goes through net",
+          "card": 8
+        },
+        {
+          "start": 6079,
+          "end": 6103,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 10
+        },
+        {
+          "start": 6268,
+          "end": 6310,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "hits rim (front half), bounces up high and back toward shooter",
+          "card": 11
+        },
+        {
+          "start": 6428,
+          "end": 6446,
+          "outcome": "MAKE",
+          "note": "swish-like, ball inside net then below",
+          "card": 12
+        },
+        {
+          "start": 6645,
+          "end": 6705,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "hits back rim/backboard, bounces up out of crop, comes down outside right",
+          "card": 13
+        },
+        {
+          "start": 6942,
+          "end": 6984,
+          "outcome": "MAKE",
+          "note": "rolls around rim then down through net (strands over ball)",
+          "card": 14
+        },
+        {
+          "start": 7536,
+          "end": 7566,
+          "outcome": "MAKE",
+          "note": "high arc from close, drops through net",
+          "card": 15
+        },
+        {
+          "start": 7835,
+          "end": 7853,
+          "outcome": "MAKE",
+          "note": "through net near backboard side",
+          "card": 16
+        },
+        {
+          "start": 8296,
+          "end": 8398,
+          "outcome": "IGNORE",
+          "card": 17,
+          "note": "two balls at the rim at once; labeler unsure which made and which missed (rubric: can't keep them apart -> IGNORE). Changed by Claude 2026-11-05."
+        },
+        {
+          "start": 8755,
+          "end": 8791,
+          "outcome": "MAKE",
+          "note": "through net, net pushed right",
+          "card": 19
+        },
+        {
+          "start": 8872,
+          "end": 8914,
+          "outcome": "MISS",
+          "miss_type": "front_rim",
+          "note": "bounces on rim, rolls off front edge outside net",
+          "card": 20
+        },
+        {
+          "start": 9402,
+          "end": 9450,
+          "outcome": "MAKE",
+          "note": "bounces on rim then through net",
+          "card": 21
+        },
+        {
+          "start": 9659,
+          "end": 9713,
+          "outcome": "MAKE",
+          "note": "close layup rises past rim, comes down and drops through net",
+          "card": 22
+        },
+        {
+          "start": 9874,
+          "end": 9910,
+          "outcome": "MAKE",
+          "note": "high arc, through net",
+          "card": 23
+        },
+        {
+          "start": 10730,
+          "end": 10772,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "hits back rim, bounces up, rolls off front edge outside net",
+          "card": 26
+        },
+        {
+          "start": 10839,
+          "end": 10881,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 27
+        },
+        {
+          "start": 11089,
+          "end": 11107,
+          "outcome": "MAKE",
+          "note": "through net, net flips",
+          "card": 28
+        },
+        {
+          "start": 11095,
+          "end": 11167,
+          "outcome": "MISS",
+          "miss_type": "back_rim",
+          "note": "second ball: bounces off back rim/backboard up out of crop, falls outside right",
+          "card": 28
+        },
+        {
+          "start": 11355,
+          "end": 11373,
+          "outcome": "MAKE",
+          "note": "through net, net flips",
+          "card": 30
+        },
+        {
+          "start": 11461,
+          "end": 11479,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 31
+        },
+        {
+          "start": 11558,
+          "end": 11576,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 32
+        },
+        {
+          "start": 11760,
+          "end": 11778,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 33
+        },
+        {
+          "start": 11796,
+          "end": 11820,
+          "outcome": "MAKE",
+          "note": "second shot, through net near backboard side",
+          "card": 33
+        },
+        {
+          "start": 11950,
+          "end": 11980,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 35
+        },
+        {
+          "start": 12143,
+          "end": 12167,
+          "outcome": "MAKE",
+          "note": "ball from top drops through net",
+          "card": 36
+        },
+        {
+          "start": 12349,
+          "end": 12367,
+          "outcome": "MAKE",
+          "note": "blurred ball drops through rim, net bunches up",
+          "card": 37
+        },
+        {
+          "start": 12571,
+          "end": 12595,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 38
+        },
+        {
+          "start": 12690,
+          "end": 12726,
+          "outcome": "MAKE",
+          "note": "through net, exits bottom right",
+          "card": 39
+        },
+        {
+          "start": 12768,
+          "end": 12798,
+          "outcome": "MAKE",
+          "note": "sits on rim then drops through net",
+          "card": 39
+        },
+        {
+          "start": 12981,
+          "end": 13005,
+          "outcome": "MAKE",
+          "note": "through net",
+          "card": 40
+        }
+      ]
+    },
+    "public/commons_bandits/bandits_practice_01.webm": {
+      "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
+      "split": "dev",
+      "source": {
+        "group": "commons:bandits_practice",
+        "license": "CC BY 3.0",
+        "attribution": "Shotbug Press",
+        "camera": "floor level behind/beside hoop, handheld-ish, 720p60",
+        "url": "https://commons.wikimedia.org/wiki/File:ShotBug_Press_LIVE!_at_the_Langley_Event_Centre_for_the_Vancouver_Bandits_first_practice_of_the_year_01.webm"
+      },
+      "shots": [
+        {
+          "start": 2251,
+          "end": 2269,
+          "outcome": "MISS",
+          "miss_type": "other",
+          "note": "ball reaches left edge of backboard/rim and falls out left; contact point unclear, camera panning",
+          "card": 3
+        },
+        {
+          "start": 2722,
+          "end": 2752,
+          "outcome": "MAKE",
+          "note": "drops through rim, net whips up",
+          "card": 5
+        }
+      ]
     }
   }
 }

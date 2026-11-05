@@ -2,12 +2,12 @@
 
 **Goal:** single-camera basketball analytics. Phase 1 is a make/miss counter for one shooter. Later phases add 2PT/3PT, shot type, multiple players and shot-selection analysis. Full plan: `docs/ROADMAP.md`. Rule: no phase starts until the previous one is reliable on our own footage.
 
-**Current phase: Phase 1, make/miss (blocked).** Stage plan in progress on branch `stage1/label-tooling` (2026-11-04):
-items 1-3 are done (in-and-out MISS, `scripts/label_candidates.py`, seconds-based thresholds); item 6 is partly done (ROADMAP updated).
-Items 4-5 are NOT done: grow the miss set to at least 50 licensed public misses, label them, then run Gate A (`scripts/evaluate.py --report`).
-The Gate A baseline on the distinct legacy set is 56/63 makes (88.9%, FAIL: needs 90%) with 0/8 false makes.
-Public footage may be partly downloaded in `sample_clips/public/` (see SOURCES_public.md there, if it exists); check each file's license before using it.
-- **Score:** 68/75 labeled shots correct, 0 false makes, on 11 third-party clips (`sample_clips/labels.json`). Only 8 of those shots are distinct misses.
+**Current phase: Phase 1, make/miss (blocked). Gate A FAILS (2026-11-05).** Branch `stage1/label-tooling`.
+- **Gate A** (`scripts/evaluate.py --report`, dev data incl. a CC BY high-school game and practice clips): 90/137 makes counted (65.7%); 2 false makes in 46 misses.
+- **Main failure:** the tracker locks onto the wrong ball-like object (a resting ball, a second ball, a head) under a moving camera or with several balls. 24 of 41 never-armed makes are lost this way, and both false makes too.
+- **Next step:** shot-centric ball selection (see `docs/tracking-research.md` §0). It's a tracker change, so agree it first.
+- **Labels:** the new ones are Claude-made from contact sheets, not human-verified. Labeling pages: `python scripts/label_candidates.py <clip>`.
+- **Legacy clips** (11 GitHub clips): 56/63 distinct makes, 0/8 false makes. Public footage: `sample_clips/public/`, provenance and licenses in `sample_clips/SOURCES.md`.
 - **Blocker, measured 2026-11-04:** all 7 failures are makes that weren't counted.
   - 6 involve the ball being invisible for 7-25 frames at the rim: blur over the backboard, or hidden in/below the net.
   - 4 never arm, 2 end through the occlusion grace, 1 is a net-deflected ball that looks sideways in 2D. 0 are timeouts.

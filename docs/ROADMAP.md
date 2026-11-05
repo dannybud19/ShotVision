@@ -4,7 +4,7 @@ ShotVision is a single-camera basketball analytics system. Each phase is describ
 
 **Rule for the whole roadmap: no phase starts until the one before it is reliable on real footage from our own camera.** "Reliable" means the phase's exit criteria below, measured on a held-out set that was never used for tuning.
 
-Status (2026-11-04): Phase 1 in progress. 68/75 labeled shots correct, 0 false makes, on 11 third-party clips. Measured diagnosis and next step: `docs/tracking-research.md`. History: `docs/PROJECT_LOG.md`.
+Status (2026-11-05): Phase 1 in progress. Gate A on public dev footage fails: 90/137 makes counted, 2 false makes in 46 misses. The main failure is the tracker following the wrong object under a moving camera or with several balls. Details: `docs/tracking-research.md` §0. History: `docs/PROJECT_LOG.md`.
 
 ---
 

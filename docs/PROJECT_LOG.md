@@ -89,6 +89,21 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **ROADMAP:** release-moment detection and shooter position moved from Phase 3 into Phase 2.
 - **Not done (usage limit):** item 4 (licensed public misses: a search agent was started and then stopped) and item 5 (Gate A on the bigger set).
 
+### 2026-11-05 — Items 4-5: public miss set and Gate A (FAIL)
+
+- **Public footage:** searched Wikimedia Commons and the Internet Archive.
+  - Kept a full high-school game (Hardwick Community TV, CC BY 4.0, 1080p60, panning sideline camera) and two Vancouver Bandits practice clips (CC BY 3.0, 720p60).
+  - Rejected 4 clips as unusable, and skipped archive.org "CC BY" NBA re-uploads as license-dubious.
+  - Provenance is in `sample_clips/SOURCES.md`.
+- **Labeling tool:** 3 s cards sampled every 0.1 s, plus an IGNORE ("can't tell") outcome. evaluate.py now allows 1 s after a labeled window, since the pipeline resolves up to ~1 s after the ball leaves the net. Legacy results are unchanged.
+- **Labels:** made by Claude subagents from contact sheets (Opus for Bandits, Sonnet for the game, to save tokens). Claude checked every make disagreement and relabeled one card as MISS (the scoreboard didn't change). Not human-verified.
+- **Gate A: FAIL.**
+  - 90/137 makes counted.
+  - 2 false makes in 46 distinct misses, both the tracker following a non-ball object under a moving camera.
+  - 41 lost makes never armed; 24 of those are tracker losses (it stays locked on a resting or second ball).
+- **No pipeline changes were made** for this (stage rule). The recommended next step is shot-centric ball selection.
+- **Not done:** Bandits 03 (98 cards) is unlabeled; 46 misses is short of the 50 target.
+
 ---
 
 ## Tools used

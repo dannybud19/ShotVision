@@ -375,8 +375,8 @@ def merge(args) -> int:
     entry["shots"] = shots
     labels["clips"][clip] = entry
     ev.LABELS_PATH.write_text(json.dumps(labels, indent=2) + "\n")
-    n_make = sum(s["outcome"] == "MAKE" for s in shots)
-    print(f"merged {clip}: {n_make} makes, {len(shots) - n_make} misses")
+    n = {o: sum(s["outcome"] == o for s in shots) for o in ("MAKE", "MISS", "IGNORE")}
+    print(f"merged {clip}: {n['MAKE']} makes, {n['MISS']} misses, {n['IGNORE']} ignored windows")
     return 0
 
 
