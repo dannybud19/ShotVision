@@ -162,13 +162,12 @@ def replay(
     state_machine: ShotStateMachine | None = None
     out = Replay(frames=[], results=[])
     for frame_idx, dets in enumerate(detections):
-        ball_tracker.ingest(dets)
         rim = rim_tracker.update(dets)
-        if rim is not None:
-            if state_machine is None:
-                state_machine = ShotStateMachine(rim, config.shot_logic, fps=fps)
-            else:
-                state_machine.rim = rim
+        ball_tracker.ingest(dets, rim=rim, locked_track_id=state_machine.armed_track_id if state_machine else None)
+        if rim is not None and state_machine is None:
+            state_machine = ShotStateMachine(rim, config.shot_logic, fps=fps)
+        elif state_machine is not None and (rim is not None or config.shot_logic.cancel_when_rim_lost):
+            state_machine.rim = rim  # None while the hoop is lost: no arming, armed shot cancelled
         obs = ball_tracker.current_frame_ball_obs
         if state_machine is not None:
             result = state_machine.update(obs, frame_idx)

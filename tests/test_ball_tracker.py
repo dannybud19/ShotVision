@@ -237,3 +237,103 @@ def test_stationary_detection_is_ignored():
         _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])
     _step(tracker, [Detection(BALL, 0.3, (50, 50, 70, 70))])
     assert tracker.current_frame_ball_obs is None
+
+
+# --- shot-centric selection, size consistency (2026-11-05) -------------------
+
+from shotvision.shot_logic.rim import RimRegion  # noqa: E402
+
+
+def _rim_100_200():
+    # Hoop box x 100..200 (width 100), y 300..320.
+    return RimRegion.from_points([(100, 300), (200, 300), (100, 320), (200, 320)], inner_bound_shrink=0.15)
+
+
+def _step_rim(tracker, detections, rim=None, locked=None):
+    tracker.ingest(detections, rim=rim, locked_track_id=locked)
+
+
+def _real_tracker():
+    return BallTracker(_FakeDetector(), TrackerConfig(), buffer_len=60, fps=30.0)
+
+
+def test_shot_ball_above_the_hoop_takes_over_from_an_object_far_away():
+    # The tracker is following a resting ball far from the hoop (strong,
+    # seen every frame). A confident ball-sized candidate appears above the
+    # hoop: with the hoop known, the tracker switches to it (new identity).
+    t = _real_tracker()
+    rim = _rim_100_200()
+    resting = Detection(BALL, 0.85, (900, 600, 940, 640))
+    for _ in range(5):
+        _step_rim(t, [resting], rim)
+    assert t.current_frame_ball_pos == (920, 620)
+    old_id = t.current_frame_ball_obs.track_id
+    shot = Detection(BALL, 0.8, (140, 200, 160, 220))  # above the rim, centred, 20 px wide
+    _step_rim(t, [resting, shot], rim)
+    assert t.current_frame_ball_pos == (150, 210)
+    assert t.current_frame_ball_obs.track_id != old_id
+
+
+def test_no_shot_centric_switch_without_a_hoop():
+    t = _real_tracker()
+    resting = Detection(BALL, 0.85, (900, 600, 940, 640))
+    for _ in range(5):
+        _step_rim(t, [resting], None)
+    _step_rim(t, [resting, Detection(BALL, 0.8, (140, 200, 160, 220))], None)
+    assert t.current_frame_ball_pos == (920, 620)
+
+
+def test_no_shot_centric_switch_while_a_shot_is_armed_on_the_followed_ball():
+    t = _real_tracker()
+    rim = _rim_100_200()
+    resting = Detection(BALL, 0.85, (900, 600, 940, 640))
+    for _ in range(5):
+        _step_rim(t, [resting], rim)
+    locked = t.current_frame_ball_obs.track_id
+    _step_rim(t, [resting, Detection(BALL, 0.8, (140, 200, 160, 220))], rim, locked=locked)
+    assert t.current_frame_ball_pos == (920, 620)
+
+
+def test_low_confidence_candidate_above_the_hoop_cannot_take_over():
+    # Same bar as any other switch (switch_strong_conf): a 0.4 "ball" above a
+    # hoop (measured: a wall mural behind a false hoop) is not adopted.
+    t = _real_tracker()
+    rim = _rim_100_200()
+    resting = Detection(BALL, 0.85, (900, 600, 940, 640))
+    for _ in range(5):
+        _step_rim(t, [resting], rim)
+    _step_rim(t, [resting, Detection(BALL, 0.4, (140, 200, 160, 220))], rim)
+    assert t.current_frame_ball_pos == (920, 620)
+
+
+def test_oversized_candidate_above_the_hoop_is_not_a_ball():
+    t = _real_tracker()
+    rim = _rim_100_200()
+    resting = Detection(BALL, 0.85, (900, 600, 940, 640))
+    for _ in range(5):
+        _step_rim(t, [resting], rim)
+    _step_rim(t, [resting, Detection(BALL, 0.9, (100, 150, 200, 250))], rim)  # as wide as the hoop
+    assert t.current_frame_ball_pos == (920, 620)
+
+
+def test_much_bigger_detection_does_not_continue_the_followed_ball():
+    # A 52 px object next to a ~19 px ball is something else (measured: it
+    # continued the ball's identity below the net and scored a false make).
+    t = _real_tracker()
+    for i in range(4):
+        _step_rim(t, [Detection(BALL, 0.8, (100 + 5 * i, 100, 119 + 5 * i, 119))])
+    ball_id = t.current_frame_ball_obs.track_id
+    _step_rim(t, [Detection(BALL, 0.8, (110, 120, 162, 172))])
+    assert t.current_frame_ball_obs is None or t.current_frame_ball_obs.track_id != ball_id
+
+
+def test_size_reference_is_the_median_not_the_last_box():
+    # Inside the net the box shrinks (partial occlusion); the ball coming out
+    # at its normal size must still continue the same identity.
+    t = _real_tracker()
+    widths = [24, 24, 24, 24, 13, 12]
+    for i, w in enumerate(widths):
+        _step_rim(t, [Detection(BALL, 0.8, (100, 100 + 4 * i, 100 + w, 100 + 4 * i + w))])
+    ball_id = t.current_frame_ball_obs.track_id
+    _step_rim(t, [Detection(BALL, 0.8, (100, 128, 125, 153))])  # 25 px: 2.1x the last box, ~1x the median
+    assert t.current_frame_ball_obs is not None and t.current_frame_ball_obs.track_id == ball_id

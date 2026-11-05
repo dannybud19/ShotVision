@@ -176,8 +176,14 @@ class ShotStateMachine:
         self.shot_timeout_frames = to_frames(config.shot_timeout_s, fps)
         self.crossing_fit_window = max(2, to_frames(config.crossing_fit_window_s, fps))
         self.state = ShotState.IDLE
+        self.cancelled_shots = 0  # armed shots dropped because the hoop was lost
         self._reset_prearm()
         self._reset_armed()
+
+    @property
+    def armed_track_id(self) -> int | None:
+        """The tracker identity the current armed shot follows (None if idle)."""
+        return self._armed_track_id if self.state is ShotState.ARMED else None
 
     def _reset_prearm(self) -> None:
         self._prearm_streak = 0
@@ -206,6 +212,17 @@ class ShotStateMachine:
         BallObservation with an assumed small radius."""
         if isinstance(obs, tuple):
             obs = BallObservation.from_center(*obs)
+        if self.rim is None and getattr(self.config, "cancel_when_rim_lost", True):
+            # The hoop isn't being tracked (lost, or the camera panned away):
+            # positions can't be judged against it. Never arm; an armed shot
+            # is cancelled without a result. (Measured: a shot armed against a
+            # stale rim during a pan, then scored a head below it as a make.)
+            if self.state is ShotState.ARMED:
+                self.cancelled_shots += 1
+                self.state = ShotState.IDLE
+                self._reset_armed()
+            self._reset_prearm()
+            return None
         if self.state is ShotState.IDLE:
             # Weak observations never contribute to arming.
             return self._update_idle(None if obs is not None and obs.weak else obs, frame_idx)

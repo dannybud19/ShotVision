@@ -27,7 +27,11 @@
     "stationary_min_hits_s": 0.8333,
     "stationary_radius_widths": 0.6,
     "weak_gate_scale": 0.6,
-    "weak_size_ratio": 1.6
+    "weak_size_ratio": 1.6,
+    "assoc_size_ratio": 2.0,
+    "approach_rx_widths": 2.0,
+    "max_ball_to_hoop_width": 0.9,
+    "reacquire_near_hoop": false
   },
   "shot_logic": {
     "inner_bound_shrink": 0.15,
@@ -42,6 +46,7 @@
     "crossing_fit_window_s": 0.1333,
     "rim_ema_alpha": 0.25,
     "rim_lost_grace_s": 1.0,
-    "rim_size_jump_max_ratio": 1.6
+    "rim_size_jump_max_ratio": 1.6,
+    "cancel_when_rim_lost": true
   }
 }

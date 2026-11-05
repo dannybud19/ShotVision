@@ -27,7 +27,17 @@ Association rules, per frame (all thresholds in TrackerConfig):
      MISS calls on measured footage.
   4. After max_gap_s without an accepted detection, re-acquire the most
      confident candidate.
-  5. If no confident detection was accepted, a *weak* one (track_conf <= conf
+  5. Size: a confident detection continues or re-acquires the followed ball
+     only at a width within assoc_size_ratio of the ball's; anything else
+     starts a new identity (which an armed shot ignores).
+  6. Shot-centric selection (only when the hoop is known, and never while a
+     shot is armed on the followed ball): if the followed object is not
+     approaching the hoop but a confident, ball-sized candidate is (above
+     the rim, near its centre), switch to that candidate with a new identity.
+     The single-ball assumption fails with several balls in play, balls on
+     racks and moving cameras, where the tracker otherwise stays on the wrong
+     object while the shot ball flies.
+  7. If no confident detection was accepted, a *weak* one (track_conf <= conf
      < the confirmation threshold) may continue the followed ball — only
      inside a tighter gate around the prediction and at a consistent size.
      It is marked `weak=True`; the state machine uses it to keep an armed
@@ -98,6 +108,23 @@ class BallTracker:
         # `current_frame_ball_pos` center is kept for convenience.
         self.current_frame_ball_pos: tuple[float, float] | None = None
         self.current_frame_ball_obs: BallObservation | None = None
+        # Set per frame by ingest(): the hoop (for shot-centric selection) and
+        # the track id an armed shot is locked on (never switched away from).
+        self._rim = None
+        self._locked_track_id: int | None = None
+
+    def detect(self, frame) -> list[Detection]:
+        """Detection only (no association): all canonical detections at the
+        raw candidate floor. Lets the caller update the rim from the same
+        detections before ingest()."""
+        results = self.detector.model.predict(
+            frame,
+            conf=self.detector.track_conf,
+            imgsz=self.detector.imgsz,
+            device=self.detector.device,
+            verbose=False,
+        )
+        return self.detector.parse_result(results[0])
 
     def update(self, frame) -> list[Detection]:
         """Runs detection on one frame, returns all canonical detections
@@ -113,10 +140,14 @@ class BallTracker:
         )
         return self.ingest(self.detector.parse_result(results[0]))
 
-    def ingest(self, detections: list[Detection]) -> list[Detection]:
+    def ingest(self, detections: list[Detection], rim=None, locked_track_id: int | None = None) -> list[Detection]:
         """Advance one frame using an already-computed detections list —
         update() without the inference, so recorded detections can be
-        replayed (scripts/evaluate.py) through the exact same association."""
+        replayed (scripts/evaluate.py) through the exact same association.
+        `rim` (the current RimRegion, or None) enables shot-centric selection;
+        `locked_track_id` is the identity an armed shot is following."""
+        self._rim = rim
+        self._locked_track_id = locked_track_id
         self._update_trajectory(detections)
         self.frame_idx += 1
         return detections
@@ -170,9 +201,15 @@ class BallTracker:
         if last is None:
             # (Re)acquisition after the followed ball expired keeps the
             # identity: e.g. the ball reappearing below the net after a long
-            # occlusion is the same ball the shot armed on. Only abandoning a
-            # live track for another object (below) starts a new identity.
-            return max(candidates, key=lambda d: d.conf), False
+            # occlusion is the same ball the shot armed on — but only if it is
+            # consistent with that ball (size, and near the hoop when the hoop
+            # is known). Anything else starts a new identity.
+            best = max(candidates, key=lambda d: d.conf)
+            return best, not self._consistent_reacquisition(best)
+
+        approach = self._approach_candidate(candidates, last)
+        if approach is not None:
+            return approach, True
 
         elapsed = max(1, self.frame_idx - last.frame_idx)
         velocity = self._velocity()
@@ -195,9 +232,11 @@ class BallTracker:
         def dist(d: Detection) -> float:
             return min(math.dist(d.center, a) for a in anchors)
 
-        nearest = min(candidates, key=dist)
-        if dist(nearest) <= gate_widths * ball_width:
-            return nearest, False
+        sized = [d for d in candidates if self._size_ok(d, last.track_id)]
+        if sized:
+            nearest = min(sized, key=dist)
+            if dist(nearest) <= gate_widths * ball_width:
+                return nearest, False
 
         # Nothing plausible near the followed ball. Switch only to a confident
         # detection, and only if the followed ball is stale or was weak.
@@ -220,6 +259,77 @@ class BallTracker:
         if strong.conf >= self.cfg.switch_strong_conf and followed_is_stale_or_weak:
             return strong, True
         return None, False
+
+    def _ref_width(self, track_id: int) -> float:
+        """The followed ball's typical width: the median of its recent
+        confident boxes. Not the last box alone: inside the net the box
+        shrinks and grows with partial occlusion (measured 10-32 px for a
+        ~24 px ball), so a single box makes a bad size reference."""
+        last_frame = self.trajectory[-1].frame_idx if self.trajectory else 0
+        window = self._frames(self.cfg.strength_window_s)
+        widths = sorted(
+            p.width for p in self.trajectory
+            if p.track_id == track_id and p.width and p.conf >= self.detector.conf
+            and last_frame - p.frame_idx <= window
+        )
+        if not widths:
+            return self.trajectory[-1].width if self.trajectory else 0.0
+        return widths[len(widths) // 2]
+
+    def _size_ok(self, d: Detection, track_id: int) -> bool:
+        ratio = getattr(self.cfg, "assoc_size_ratio", None)
+        ref = self._ref_width(track_id) if self.trajectory else 0.0
+        return ratio is None or not ref or 1 / ratio <= _width(d) / ref <= ratio
+
+    # --- shot-centric helpers (need the hoop) ----------------------------
+
+    def _in_approach_zone(self, x: float, y: float, width: float) -> bool:
+        """Above the rim, near its centre, and ball-sized for this hoop."""
+        rim = getattr(self, "_rim", None)
+        if rim is None:
+            return False
+        return (
+            y < rim.outer_top
+            and abs(x - rim.center_x) <= self.cfg.approach_rx_widths * rim.outer_width
+            and width <= self.cfg.max_ball_to_hoop_width * rim.outer_width
+        )
+
+    def _approach_candidate(self, candidates: list[Detection], last: TrajectoryPoint) -> Detection | None:
+        """A candidate to switch to because it, not the followed object, is
+        approaching the hoop. Never while a shot is armed on the followed
+        ball, and never if the followed object is itself approaching."""
+        if getattr(self, "_rim", None) is None or getattr(self.cfg, "approach_rx_widths", None) is None:
+            return None
+        locked = getattr(self, "_locked_track_id", None)
+        if locked is not None and locked == last.track_id:
+            return None
+        if self._in_approach_zone(last.x, last.y, last.width):
+            return None
+        # Same bar as any other switch: only a confident detection may take
+        # over (measured: a mural behind a falsely detected hoop produced
+        # 0.15-0.40 "balls" that would otherwise be adopted and score a make).
+        zone = [
+            d for d in candidates
+            if d.conf >= self.cfg.switch_strong_conf and self._in_approach_zone(*d.center, _width(d))
+        ]
+        if not zone:
+            return None
+        rim = self._rim
+        return min(zone, key=lambda d: abs(d.center[0] - rim.center_x))
+
+    def _consistent_reacquisition(self, d: Detection) -> bool:
+        """May `d` carry on the identity of the expired followed ball?"""
+        if not self.trajectory:
+            return True
+        if not self._size_ok(d, self.trajectory[-1].track_id):
+            return False
+        rim = getattr(self, "_rim", None)
+        if rim is not None and getattr(self.cfg, "reacquire_near_hoop", True):
+            h = rim.outer_bottom - rim.outer_top
+            x, y = d.center
+            if abs(x - rim.center_x) > 1.5 * rim.outer_width or y > rim.outer_bottom + 2 * h:
+                return False
+        return True
 
     def _choose_weak(self, weak: list[Detection]) -> Detection | None:
         """A low-confidence detection may only continue a followed ball with

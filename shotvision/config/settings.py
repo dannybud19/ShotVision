@@ -131,6 +131,26 @@ class TrackerConfig:
     # at a width within weak_size_ratio of the followed ball's.
     weak_gate_scale: float = 0.6
     weak_size_ratio: float = 1.6
+    # A confident detection continues (or re-acquires) a followed ball only
+    # if its box width is within this ratio of the ball's. Measured: a 52 px
+    # object below the net re-acquired a 19 px ball's identity and scored a
+    # false make (Hazen game f39440).
+    assoc_size_ratio: float = 2.0
+    # Shot-centric selection (needs the hoop): when the followed object is
+    # not approaching the hoop and a confident candidate is (above the rim,
+    # within approach_rx_widths hoop widths of its centre, no wider than
+    # max_ball_to_hoop_width x the hoop box, conf >= switch_strong_conf),
+    # switch to that candidate. Never
+    # while a shot is armed. Measured: the tracker stayed locked on a resting
+    # ball or a second practice ball while the shot ball was seen above the rim
+    # (24 of 41 never-armed makes on the public footage).
+    approach_rx_widths: float = 2.0
+    max_ball_to_hoop_width: float = 0.9
+    # When the hoop is known, re-acquisition after a gap keeps the ball's
+    # identity only near the hoop (within 1.5 hoop widths, not far below it).
+    # Off: measured on the public dev clips it lost 6 real makes and removed
+    # no false make (the size check already blocks the case it targeted).
+    reacquire_near_hoop: bool = False
 
 
 @dataclass
@@ -181,6 +201,9 @@ class ShotLogicConfig:
     # guards against a stray misclassification corrupting the scoring
     # geometry.
     rim_size_jump_max_ratio: float = 1.6
+    # While the hoop isn't tracked (lost or panned away), never arm, and
+    # cancel an armed shot without a result.
+    cancel_when_rim_lost: bool = True
 
 
 @dataclass

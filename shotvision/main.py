@@ -85,8 +85,13 @@ def run(config: Config, loop: bool = False) -> None:
                     print("[ShotVision] Source exhausted.")
                     break
 
-                detections = ball_tracker.update(frame)
+                detections = ball_tracker.detect(frame)
                 rim = rim_tracker.update(detections)
+                ball_tracker.ingest(
+                    detections,
+                    rim=rim,
+                    locked_track_id=state_machine.armed_track_id if state_machine else None,
+                )
 
                 if rim is not None:
                     if state_machine is None:
@@ -94,6 +99,8 @@ def run(config: Config, loop: bool = False) -> None:
                         print("[ShotVision] Rim acquired — shot tracking active.")
                     else:
                         state_machine.rim = rim
+                elif state_machine is not None:
+                    state_machine.rim = None  # hoop lost: no arming; an armed shot is cancelled
 
                 if state_machine is not None:
                     result = state_machine.update(ball_tracker.current_frame_ball_obs, frame_idx)

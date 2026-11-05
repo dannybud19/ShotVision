@@ -494,3 +494,38 @@ def test_prearm_streak_survives_a_single_missed_frame():
     sm2 = ShotStateMachine(_rim(), _config(descent_min_frames=2, prearm_max_missed_frames=1))
     _feed(sm2, [(150, 10), None, None, (150, 25)])
     assert sm2.state is ShotState.IDLE
+
+
+# --- no hoop, no shot (2026-11-05) -------------------------------------------
+
+def test_never_arms_while_the_hoop_is_lost():
+    sm = ShotStateMachine(_rim(), _config())
+    sm.rim = None
+    _feed(sm, [(150, 10), (150, 20), (150, 30)])
+    assert sm.state is ShotState.IDLE
+
+
+def test_armed_shot_is_cancelled_without_a_result_when_the_hoop_is_lost():
+    # Measured: a shot armed against a stale rim during a pan, then scored a
+    # head below it as a make. Losing the hoop now drops the shot.
+    sm = ShotStateMachine(_rim(), _config())
+    _feed(sm, [(150, 10), (150, 20)])
+    assert sm.state is ShotState.ARMED
+    sm.rim = None
+    assert sm.update((150, 80), 2) is None
+    assert sm.state is ShotState.IDLE
+    assert sm.cancelled_shots == 1
+    sm.rim = _rim()
+    assert _feed(sm, [(150, 90)], start_frame=3) == []
+
+
+def test_armed_track_id_is_exposed_only_while_armed():
+    from shotvision.shot_logic.state_machine import BallObservation
+
+    sm = ShotStateMachine(_rim(), _config())
+    assert sm.armed_track_id is None
+    for i, y in enumerate((10, 20)):
+        o = BallObservation.from_center(150, y)
+        o.track_id = 7
+        sm.update(o, i)
+    assert sm.armed_track_id == 7
