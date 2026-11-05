@@ -66,6 +66,32 @@ This is a tracker change in the tested pipeline, so per the stage rules it was *
 - **Candidate recall:** candidates come from the detector, so a make it never sees near the hoop gets no card and no label. That biases makes counted upward on the game, not downward.
 - **Camera:** the game camera pans. It approximates "elevated, far from the hoop", but it is not the fixed camera Phase 1 targets.
 
+### 0b. After the tracker fix (2026-11-05, commit 5670a1e onward)
+
+You approved the fix. It adds shot-centric selection, size-consistent association using the median recent box width, and "no hoop, no shot" (§0). The evaluator now also matches each resolution to the label whose **end** is closest. Previously the first result in the window took it, and in multi-ball practice that was often another ball's.
+
+| | Before fix | After fix |
+|---|---|---|
+| Makes counted (same 137 makes) | 90 | **107** |
+| False makes (46 misses) | 2 | **0** |
+| Legacy GitHub clips | 56/63 | 56/63 (every shot's outcome unchanged) |
+
+**First clip not used in development: Bandits practice 03** (CC BY 3.0; 55 labeled makes, 11 misses). Labeled after the fix was written.
+- Makes counted: 30/56.
+- False makes: 0 on labeled misses, **1 spurious make**.
+  - **f10473: a ball thrown close to the camera passes in front of the hoop.** It is 0.82–1.11× the hoop's width, against 0.43–0.50× for balls through the same hoop. It was first seen at rim level, armed for 7 frames and scored.
+  - This is the 2D depth-ambiguity case the roadmap calls out. Measured on all 133 counted makes, neither fixed cue separates it:
+    - ball/hoop width at the rim reaches 0.8–1.05 for real makes (the net inflates the box);
+    - half of real makes are first seen ≤ 1 box height above the rim.
+  - With one example, a threshold would be fitted to that example, so none was added. A real fix needs a depth cue (occlusion order: is the net drawn over the ball; or ball size compared with balls that went through this hoop) and more in-front examples.
+
+**Totals with Bandits 03:** 132/193 makes (68.4%), 0/57 labeled misses scored MAKE, 1 spurious make (95% upper bound 8.1%). Gate A still **FAILS**, on make rate and on that 1 false make.
+
+**Where makes are still lost:**
+- Bandits 03 is a crowded practice with two or three balls at the rim at once.
+- On the Hardwick game (23/43) the hoop is often lost or misdetected during pans. The no-hoop rule now cancels those shots rather than guessing.
+- A wall mural produced a false "hoop". The confidence bar on shot-centric switches stops its "ball" from scoring.
+
 ---
 
 ## 1. Measured diagnosis

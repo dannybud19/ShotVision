@@ -245,11 +245,27 @@ def score_clip(
             lo, hi = shot["start"] - slack, shot["end"] + slack_after
             unmatched = [r for r in unmatched if not lo <= r.frame_idx <= hi]
     shots = [s for s in shots if s["outcome"] != "IGNORE"]
-    for shot in sorted(shots, key=lambda s: s["start"]):
-        lo, hi = shot["start"] - slack, shot["end"] + slack_after
-        match = next((r for r in unmatched if lo <= r.frame_idx <= hi), None)
-        if match is not None:
-            unmatched.remove(match)
+    # Pair labels with resolutions closest-first by distance to the label's
+    # END: a shot resolves when the ball leaves the rim, which is where the
+    # label ends. (First-in-window matching let an earlier resolution of a
+    # different ball, e.g. in a multi-ball practice, take a label.)
+    shots = sorted(shots, key=lambda s: s["start"])
+    pairs = sorted(
+        (abs(r.frame_idx - shot["end"]), i, j)
+        for i, shot in enumerate(shots)
+        for j, r in enumerate(unmatched)
+        if shot["start"] - slack <= r.frame_idx <= shot["end"] + slack_after
+    )
+    match_of: dict[int, int] = {}
+    used: set[int] = set()
+    for _, i, j in pairs:
+        if i not in match_of and j not in used:
+            match_of[i] = j
+            used.add(j)
+    matched = {i: unmatched[j] for i, j in match_of.items()}
+    unmatched = [r for j, r in enumerate(unmatched) if j not in used]
+    for i, shot in enumerate(shots):
+        match = matched.get(i)
         check = ShotCheck(label=shot, result=match)
         if shot["outcome"] == "MAKE":
             check.coverage, check.longest_gap = _smoothness(rep.frames, shot["start"], shot["end"])
