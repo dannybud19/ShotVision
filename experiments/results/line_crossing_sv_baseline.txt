@@ -1,0 +1,336 @@
+[PASS] chonyy_one_score_one_miss.mp4: got 1M/1m, expected 1M/1m | false makes 0 | ball in 77% of frames
+[PASS] chonyy_two_score_three_miss.mp4: got 2M/3m, expected 2M/3m | false makes 0 | ball in 78% of frames
+[FAIL] video_test_5.mp4: got 26M/2m, expected 30M/0m | false makes 0 | ball in 48% of frames
+    ok  label MAKE [21-78] -> MAKE @f92 (make_confirmed) | coverage 66%, longest gap 8f
+    BAD label MAKE [211-242] -> NOT RESOLVED | coverage 69%, longest gap 7f
+    ok  label MAKE [380-424] -> MAKE @f414 (make_confirmed) | coverage 87%, longest gap 4f
+    ok  label MAKE [534-568] -> MAKE @f556 (make_confirmed) | coverage 80%, longest gap 3f
+    ok  label MAKE [623-689] -> MAKE @f679 (make_confirmed) | coverage 55%, longest gap 11f
+    ok  label MAKE [774-813] -> MAKE @f801 (make_confirmed) | coverage 80%, longest gap 4f
+    ok  label MAKE [866-919] -> MAKE @f909 (make_confirmed) | coverage 76%, longest gap 6f
+    ok  label MAKE [1005-1047] -> MAKE @f1035 (make_confirmed) | coverage 70%, longest gap 7f
+    ok  label MAKE [1106-1159] -> MAKE @f1148 (make_confirmed) | coverage 76%, longest gap 6f
+    ok  label MAKE [1238-1274] -> MAKE @f1263 (make_confirmed) | coverage 81%, longest gap 4f
+    ok  label MAKE [1359-1405] -> MAKE @f1393 (make_confirmed) | coverage 70%, longest gap 7f
+    ok  label MAKE [1453-1505] -> MAKE @f1497 (make_confirmed) | coverage 81%, longest gap 4f
+    ok  label MAKE [1572-1607] -> MAKE @f1597 (make_confirmed) | coverage 75%, longest gap 4f
+    ok  label MAKE [1683-1730] -> MAKE @f1719 (make_confirmed) | coverage 60%, longest gap 8f
+    ok  label MAKE [1782-1824] -> MAKE @f1815 (make_confirmed) | coverage 84%, longest gap 3f
+    BAD label MAKE [1906-1946] -> NOT RESOLVED | coverage 41%, longest gap 10f
+    ok  label MAKE [1995-2047] -> MAKE @f2035 (make_confirmed) | coverage 81%, longest gap 5f
+    ok  label MAKE [2113-2146] -> MAKE @f2136 (make_confirmed) | coverage 65%, longest gap 8f
+    ok  label MAKE [2199-2233] -> MAKE @f2223 (make_confirmed) | coverage 86%, longest gap 3f
+    ok  label MAKE [2298-2331] -> MAKE @f2321 (make_confirmed) | coverage 68%, longest gap 6f
+    ok  label MAKE [2377-2437] -> MAKE @f2425 (make_confirmed) | coverage 85%, longest gap 3f
+    ok  label MAKE [2507-2550] -> MAKE @f2538 (make_confirmed) | coverage 73%, longest gap 6f
+    BAD label MAKE [2597-2652] -> MISS @f2640 (miss_occlusion_gap) | coverage 64%, longest gap 8f
+    ok  label MAKE [2697-2735] -> MAKE @f2724 (make_confirmed) | coverage 87%, longest gap 5f
+    ok  label MAKE [2778-2811] -> MAKE @f2824 (make_confirmed) | coverage 79%, longest gap 7f
+    ok  label MAKE [2903-2931] -> MAKE @f2935 (make_confirmed) | coverage 86%, longest gap 4f
+    ok  label MAKE [2989-3041] -> MAKE @f3030 (make_confirmed) | coverage 77%, longest gap 7f
+    BAD label MAKE [3104-3129] -> MISS @f3156 (miss_occlusion_gap) | coverage 88%, longest gap 2f
+    ok  label MAKE [3217-3255] -> MAKE @f3245 (make_confirmed) | coverage 95%, longest gap 1f
+    ok  label MAKE [3310-3371] -> MAKE @f3363 (make_confirmed) | coverage 68%, longest gap 8f
+[PASS] chonyy_sample_video.mp4: got 1M/0m, expected 1M/0m | false makes 0 | ball in 74% of frames
+[FAIL] lf_shot_detection.mp4: got 8M/2m, expected 9M/1m | false makes 0 | ball in 42% of frames
+    ok  label MAKE [55-82] -> MAKE @f80 (make_confirmed) | coverage 75%, longest gap 4f
+    ok  label MAKE [161-195] -> MAKE @f187 (make_confirmed) | coverage 69%, longest gap 5f
+    ok  label MAKE [272-303] -> MAKE @f295 (make_confirmed) | coverage 72%, longest gap 6f
+    ok  label MAKE [370-413] -> MAKE @f405 (make_confirmed) | coverage 41%, longest gap 19f
+    ok  label MAKE [503-532] -> MAKE @f524 (make_confirmed) | coverage 70%, longest gap 4f
+    BAD label MAKE [600-640] -> MISS @f626 (miss_rim_out_sideways) | coverage 59%, longest gap 11f
+    ok  label MAKE [707-765] -> MAKE @f756 (make_confirmed) | coverage 63%, longest gap 9f
+    ok  label MAKE [833-895] -> MAKE @f887 (make_confirmed) | coverage 76%, longest gap 5f
+    ok  label MAKE [1081-1115] -> MAKE @f1111 (make_confirmed) | coverage 51%, longest gap 13f
+[FAIL] lf_back.mp4: got 9M/1m, expected 9M/1m | false makes 0 | ball in 78% of frames
+    ok  label MAKE [44-75] -> MAKE @f65 (make_confirmed) | coverage 91%, longest gap 3f
+    ok  label MAKE [140-182] -> MAKE @f176 (make_confirmed) | coverage 93%, longest gap 2f
+    ok  label MAKE [261-297] -> MAKE @f285 (make_confirmed) | coverage 81%, longest gap 4f
+    ok  label MAKE [359-389] -> MAKE @f395 (make_confirmed) | coverage 65%, longest gap 6f
+    ok  label MAKE [491-525] -> MAKE @f514 (make_confirmed) | coverage 91%, longest gap 2f
+    ok  label MAKE [588-626] -> MAKE @f621 (make_confirmed) | coverage 85%, longest gap 6f
+    ok  label MAKE [736-758] -> MAKE @f747 (make_confirmed) | coverage 70%, longest gap 7f
+    ok  label MAKE [822-889] -> MAKE @f878 (make_confirmed) | coverage 84%, longest gap 6f
+    ok  label MAKE [1074-1114] -> MAKE @f1102 (make_confirmed) | coverage 68%, longest gap 13f
+[FAIL] lf_alan.mp4: got 1M/0m, expected 2M/0m | false makes 0 | ball in 39% of frames
+    ok  label MAKE [479-535] -> MAKE @f524 (make_confirmed) | coverage 54%, longest gap 7f
+    BAD label MAKE [624-653] -> NOT RESOLVED | coverage 43%, longest gap 8f
+[PASS] artur_vid29.mp4: got 3M/1m, expected 3M/1m | false makes 0 | ball in 81% of frames
+[FAIL] kyle_test_video.mp4: got 0M/0m, expected 1M/0m | false makes 0 | ball in 38% of frames
+    BAD label MAKE [88-117] -> NOT RESOLVED | coverage 40%, longest gap 8f
+[FAIL] aggie_NathanBBall.mov: got 5M/1m, expected 5M/1m | false makes 0 | ball in 60% of frames
+    ok  label MAKE [205-239] -> MAKE @f227 (make_confirmed) | coverage 80%, longest gap 4f
+    ok  label MAKE [308-351] -> MAKE @f338 (make_confirmed) | coverage 59%, longest gap 17f
+    ok  label MAKE [519-552] -> MAKE @f541 (make_confirmed) | coverage 88%, longest gap 3f
+    ok  label MAKE [617-660] -> MAKE @f648 (make_confirmed) | coverage 64%, longest gap 15f
+    ok  label MAKE [740-771] -> MAKE @f760 (make_confirmed) | coverage 78%, longest gap 3f
+[FAIL] public/commons_hardwick/hazen_girls_v_lyndon_2026-02-04.webm: got 23M/52m, expected 43M/31m | false makes 0 | ball in 35% of frames
+    BAD label MAKE [1387-1447] -> MISS @f1456 (miss_occlusion_gap) | coverage 54%, longest gap 15f
+    ok  label MAKE [1858-1888] -> MAKE @f1924 (make_confirmed) | coverage 55%, longest gap 12f
+    BAD label MAKE [5339-5369] -> NOT RESOLVED | coverage 29%, longest gap 21f
+    BAD label MAKE [7587-7623] -> NOT RESOLVED | coverage 54%, longest gap 11f
+    BAD label MAKE [35884-35920] -> NOT RESOLVED | coverage 95%, longest gap 2f
+    BAD label MISS [39311-39380] -> NOT RESOLVED
+    ok  label MAKE [44815-44851] -> MAKE @f44880 (make_confirmed) | coverage 95%, longest gap 2f
+    BAD label MISS [46620-46680] -> NOT RESOLVED
+    BAD label MAKE [49693-49741] -> NOT RESOLVED | coverage 69%, longest gap 12f
+    ok  label MAKE [55211-55241] -> MAKE @f55240 (make_confirmed) | coverage 68%, longest gap 6f
+    ok  label MAKE [56887-56917] -> MAKE @f56918 (make_confirmed) | coverage 81%, longest gap 6f
+    BAD label MAKE [60488-60524] -> NOT RESOLVED | coverage 38%, longest gap 18f
+    ok  label MAKE [62767-62803] -> MAKE @f62834 (make_confirmed) | coverage 73%, longest gap 6f
+    ok  label MAKE [74616-74658] -> MAKE @f74659 (make_confirmed) | coverage 79%, longest gap 6f
+    BAD label MAKE [77888-77936] -> MISS @f77933 (miss_rim_out_sideways) | coverage 67%, longest gap 12f
+    BAD label MAKE [78875-78905] -> NOT RESOLVED | coverage 32%, longest gap 12f
+    BAD label MAKE [94743-94791] -> NOT RESOLVED | coverage 76%, longest gap 12f
+    ok  label MAKE [97203-97263] -> MAKE @f97314 (make_confirmed) | coverage 74%, longest gap 14f
+    BAD label MAKE [108544-108580] -> MISS @f108611 (miss_below_without_inner) | coverage 68%, longest gap 12f
+    ok  label MAKE [108668-108716] -> MAKE @f108719 (make_confirmed) | coverage 69%, longest gap 12f
+    ok  label MAKE [114814-114855] -> MAKE @f114874 (make_confirmed) | coverage 74%, longest gap 4f
+    BAD label MISS [122514-122544] -> NOT RESOLVED
+    BAD label MAKE [124558-124588] -> NOT RESOLVED | coverage 6%, longest gap 16f
+    ok  label MAKE [129104-129164] -> MAKE @f129174 (make_confirmed) | coverage 52%, longest gap 19f
+    ok  label MAKE [165365-165413] -> MAKE @f165410 (make_confirmed) | coverage 39%, longest gap 22f
+    BAD label MAKE [165649-165679] -> NOT RESOLVED | coverage 32%, longest gap 21f
+    BAD label MAKE [175691-175757] -> NOT RESOLVED | coverage 75%, longest gap 12f
+    ok  label MAKE [178692-178740] -> MAKE @f178781 (make_confirmed) | coverage 80%, longest gap 10f
+    ok  label MAKE [179375-179423] -> MAKE @f179428 (make_confirmed) | coverage 65%, longest gap 12f
+    BAD label MAKE [183059-183119] -> NOT RESOLVED | coverage 23%, longest gap 32f
+    BAD label MISS [184334-184400] -> NOT RESOLVED
+    BAD label MAKE [187099-187129] -> NOT RESOLVED | coverage 35%, longest gap 15f
+    BAD label MAKE [189011-189077] -> NOT RESOLVED | coverage 61%, longest gap 13f
+    BAD label MISS [204382-204418] -> NOT RESOLVED
+    BAD label MAKE [210114-210138] -> NOT RESOLVED | coverage 64%, longest gap 9f
+    BAD label MISS [218182-218206] -> NOT RESOLVED
+    ok  label MAKE [229265-229301] -> MAKE @f229300 (make_confirmed) | coverage 84%, longest gap 6f
+    ok  label MAKE [235627-235705] -> MAKE @f235702 (make_confirmed) | coverage 92%, longest gap 2f
+    ok  label MAKE [236574-236640] -> MAKE @f236643 (make_confirmed) | coverage 87%, longest gap 4f
+    ok  label MAKE [237519-237585] -> MAKE @f237582 (make_confirmed) | coverage 48%, longest gap 18f
+    BAD label MAKE [238472-238502] -> NOT RESOLVED | coverage 32%, longest gap 21f
+    BAD label MISS [241717-241741] -> NOT RESOLVED
+    ok  label MAKE [247835-247913] -> MAKE @f247914 (make_confirmed) | coverage 80%, longest gap 16f
+    ok  label MAKE [252620-252692] -> MAKE @f252687 (make_confirmed) | coverage 71%, longest gap 15f
+    ok  label MAKE [261067-261127] -> MAKE @f261122 (make_confirmed) | coverage 82%, longest gap 7f
+    ok  label MAKE [263145-263199] -> MAKE @f263192 (make_confirmed) | coverage 73%, longest gap 8f
+    ok  label MAKE [263955-263997] -> MAKE @f264000 (make_confirmed) | coverage 47%, longest gap 12f
+    BAD label MISS [266484-266532] -> NOT RESOLVED
+    BAD label MAKE [269197-269263] -> NOT RESOLVED | coverage 45%, longest gap 16f
+    BAD label MAKE [271517-271565] -> NOT RESOLVED | coverage 41%, longest gap 29f
+    ok  label MAKE [274122-274182] -> MAKE @f274205 (make_confirmed) | coverage 64%, longest gap 10f
+    BAD spurious MISS @f39452 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f39642 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f49815 (miss_in_and_out) — no labeled shot here
+    BAD spurious MISS @f119716 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f164669 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f174199 (miss_rim_out_sideways) — no labeled shot here
+    BAD spurious MISS @f203872 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f244345 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f251494 (miss_occlusion_gap) — no labeled shot here
+[FAIL] public/commons_bandits/bandits_practice_02.webm: got 29M/8m, expected 30M/6m | false makes 0 | ball in 53% of frames
+    ok  label MAKE [2561-2585] -> MAKE @f2588 (make_confirmed) | coverage 68%, longest gap 8f
+    ok  label MAKE [3004-3034] -> MAKE @f3031 (make_confirmed) | coverage 81%, longest gap 6f
+    ok  label MAKE [3405-3429] -> MAKE @f3429 (make_confirmed) | coverage 72%, longest gap 7f
+    ok  label MAKE [3985-4009] -> MAKE @f4007 (make_confirmed) | coverage 72%, longest gap 7f
+    ok  label MAKE [4739-4829] -> MAKE @f4833 (make_confirmed) | coverage 68%, longest gap 28f
+    ok  label MAKE [5410-5458] -> MAKE @f5456 (make_confirmed) | coverage 73%, longest gap 5f
+    ok  label MAKE [5596-5632] -> MAKE @f5631 (make_confirmed) | coverage 62%, longest gap 5f
+    ok  label MAKE [6079-6103] -> MAKE @f6101 (make_confirmed) | coverage 60%, longest gap 10f
+    ok  label MAKE [6428-6446] -> MAKE @f6445 (make_confirmed) | coverage 63%, longest gap 7f
+    BAD label MAKE [6942-6984] -> NOT RESOLVED | coverage 23%, longest gap 25f
+    ok  label MAKE [7536-7566] -> MAKE @f7563 (make_confirmed) | coverage 84%, longest gap 3f
+    ok  label MAKE [7835-7853] -> MAKE @f7853 (make_confirmed) | coverage 58%, longest gap 8f
+    ok  label MAKE [8755-8791] -> MAKE @f8792 (make_confirmed) | coverage 81%, longest gap 7f
+    ok  label MAKE [9402-9450] -> MAKE @f9454 (make_confirmed) | coverage 59%, longest gap 7f
+    ok  label MAKE [9659-9713] -> MAKE @f9713 (make_confirmed) | coverage 64%, longest gap 12f
+    ok  label MAKE [9874-9910] -> MAKE @f9908 (make_confirmed) | coverage 57%, longest gap 8f
+    ok  label MAKE [10839-10881] -> MAKE @f10879 (make_confirmed) | coverage 56%, longest gap 10f
+    BAD label MAKE [11089-11107] -> NOT RESOLVED | coverage 100%, longest gap 0f
+    ok  label MAKE [11355-11373] -> MAKE @f11370 (make_confirmed) | coverage 74%, longest gap 5f
+    ok  label MAKE [11461-11479] -> MAKE @f11482 (make_confirmed) | coverage 53%, longest gap 9f
+    ok  label MAKE [11558-11576] -> MAKE @f11570 (make_confirmed) | coverage 74%, longest gap 5f
+    ok  label MAKE [11760-11778] -> MAKE @f11772 (make_confirmed) | coverage 84%, longest gap 3f
+    ok  label MAKE [11796-11820] -> MAKE @f11820 (make_confirmed) | coverage 80%, longest gap 5f
+    ok  label MAKE [11950-11980] -> MAKE @f11980 (make_confirmed) | coverage 84%, longest gap 5f
+    ok  label MAKE [12143-12167] -> MAKE @f12162 (make_confirmed) | coverage 80%, longest gap 4f
+    ok  label MAKE [12349-12367] -> MAKE @f12363 (make_confirmed) | coverage 74%, longest gap 5f
+    ok  label MAKE [12571-12595] -> MAKE @f12596 (make_confirmed) | coverage 80%, longest gap 5f
+    ok  label MAKE [12690-12726] -> MAKE @f12723 (make_confirmed) | coverage 68%, longest gap 12f
+    ok  label MAKE [12768-12798] -> MAKE @f12793 (make_confirmed) | coverage 52%, longest gap 15f
+    ok  label MAKE [12981-13005] -> MAKE @f13001 (make_confirmed) | coverage 80%, longest gap 5f
+    BAD spurious MISS @f6681 (miss_occlusion_gap) — no labeled shot here
+[FAIL] public/commons_bandits/bandits_practice_01.webm: got 0M/0m, expected 1M/1m | false makes 0 | ball in 41% of frames
+    BAD label MISS [2251-2269] -> NOT RESOLVED
+    BAD label MAKE [2722-2752] -> NOT RESOLVED | coverage 55%, longest gap 14f
+[FAIL] public/commons_bandits/bandits_practice_03.webm: got 28M/34m, expected 56M/11m | false makes 1 | ball in 47% of frames
+    BAD label MAKE [625-661] -> NOT RESOLVED | coverage 35%, longest gap 20f
+    BAD label MAKE [833-857] -> NOT RESOLVED | coverage 100%, longest gap 0f
+    ok  label MAKE [1165-1195] -> MAKE @f1194 (make_confirmed) | coverage 58%, longest gap 10f
+    BAD label MAKE [2067-2103] -> MISS @f2082 (miss_rim_out_sideways) | coverage 73%, longest gap 5f
+    ok  label MAKE [2423-2453] -> MAKE @f2448 (make_confirmed) | coverage 55%, longest gap 10f
+    BAD label MAKE [2699-2729] -> NOT RESOLVED | coverage 52%, longest gap 15f
+    BAD label MAKE [4151-4181] -> NOT RESOLVED | coverage 13%, longest gap 21f
+    BAD label MAKE [5058-5106] -> MISS @f5123 (miss_below_without_inner) | coverage 78%, longest gap 5f
+    BAD label MAKE [6243-6267] -> NOT RESOLVED | coverage 92%, longest gap 2f
+    BAD label MISS [6608-6644] -> NOT RESOLVED
+    BAD label MAKE [6683-6713] -> MISS @f6691 (miss_occlusion_gap) | coverage 45%, longest gap 15f
+    BAD label MAKE [7316-7340] -> NOT RESOLVED | coverage 40%, longest gap 15f
+    BAD label MAKE [7774-7810] -> MISS @f7833 (miss_below_without_inner) | coverage 59%, longest gap 15f
+    BAD label MAKE [8004-8034] -> NOT RESOLVED | coverage 29%, longest gap 15f
+    BAD label MAKE [8277-8301] -> NOT RESOLVED | coverage 40%, longest gap 15f
+    BAD label MAKE [8463-8481] -> MISS @f8471 (miss_below_without_inner) | coverage 79%, longest gap 4f
+    BAD label MAKE [8511-8535] -> NOT RESOLVED | coverage 76%, longest gap 3f
+    BAD label MAKE [8788-8836] -> MISS @f8819 (miss_below_without_inner) | coverage 63%, longest gap 15f
+    ok  label MAKE [8935-8977] -> MAKE @f8977 (make_confirmed) | coverage 95%, longest gap 2f
+    BAD label MAKE [9121-9139] -> NOT RESOLVED | coverage 100%, longest gap 0f
+    ok  label MAKE [9190-9202] -> MAKE @f9202 (make_confirmed) | coverage 46%, longest gap 7f
+    BAD label MAKE [9397-9421] -> MISS @f9402 (miss_in_and_out) | coverage 32%, longest gap 8f
+    ok  label MAKE [9490-9520] -> MAKE @f9529 (make_confirmed) | coverage 84%, longest gap 5f
+    ok  label MAKE [9679-9709] -> MAKE @f9703 (make_confirmed) | coverage 68%, longest gap 7f
+    ok  label MAKE [9872-9884] -> MAKE @f9880 (make_confirmed) | coverage 100%, longest gap 0f
+    ok  label MAKE [9953-9983] -> MAKE @f9980 (make_confirmed) | coverage 58%, longest gap 10f
+    BAD label MAKE [10100-10136] -> NOT RESOLVED | coverage 65%, longest gap 10f
+    ok  label MAKE [10190-10222] -> MAKE @f10218 (make_confirmed) | coverage 85%, longest gap 5f
+    ok  label MAKE [10331-10349] -> MAKE @f10345 (make_confirmed) | coverage 89%, longest gap 2f
+    ok  label MAKE [10400-10436] -> MAKE @f10430 (make_confirmed) | coverage 86%, longest gap 5f
+    ok  label MAKE [10595-10631] -> MAKE @f10635 (make_confirmed) | coverage 73%, longest gap 7f
+    ok  label MAKE [10793-10835] -> MAKE @f10836 (make_confirmed) | coverage 84%, longest gap 5f
+    BAD label MAKE [10975-11011] -> MISS @f11029 (miss_occlusion_gap) | coverage 57%, longest gap 15f
+    ok  label MAKE [11347-11383] -> MAKE @f11391 (make_confirmed) | coverage 49%, longest gap 14f
+    ok  label MAKE [11532-11568] -> MAKE @f11570 (make_confirmed) | coverage 51%, longest gap 12f
+    ok  label MAKE [11716-11746] -> MAKE @f11750 (make_confirmed) | coverage 52%, longest gap 15f
+    BAD label MAKE [11988-12000] -> NOT RESOLVED | coverage 15%, longest gap 11f
+    BAD label MAKE [12116-12140] -> NOT RESOLVED | coverage 36%, longest gap 11f
+    BAD label MAKE [12213-12255] -> NOT RESOLVED | coverage 49%, longest gap 15f
+    ok  label MAKE [12392-12428] -> MAKE @f12427 (make_confirmed) | coverage 68%, longest gap 5f
+    BAD label MAKE [12872-12902] -> MISS @f12906 (miss_occlusion_gap) | coverage 48%, longest gap 15f
+    ok  label MAKE [13088-13118] -> MAKE @f13116 (make_confirmed) | coverage 65%, longest gap 6f
+    ok  label MAKE [13331-13355] -> MAKE @f13348 (make_confirmed) | coverage 52%, longest gap 5f
+    BAD label MAKE [13544-13580] -> MISS @f13605 (miss_occlusion_gap) | coverage 54%, longest gap 17f
+    ok  label MAKE [13973-14003] -> MAKE @f13999 (make_confirmed) | coverage 65%, longest gap 5f
+    BAD label MAKE [14224-14254] -> NOT RESOLVED | coverage 42%, longest gap 18f
+    BAD label MISS [14922-14946] -> NOT RESOLVED
+    BAD label MAKE [15063-15093] -> MISS @f15092 (miss_occlusion_gap) | coverage 35%, longest gap 15f
+    ok  label MAKE [15165-15207] -> MAKE @f15203 (make_confirmed) | coverage 63%, longest gap 12f
+    ok  label MAKE [15276-15300] -> MAKE @f15298 (make_confirmed) | coverage 76%, longest gap 3f
+    ok  label MAKE [15387-15429] -> MAKE @f15418 (make_confirmed) | coverage 63%, longest gap 13f
+    BAD label MAKE [15614-15650] -> MISS @f15610 (miss_occlusion_gap) | coverage 57%, longest gap 10f
+    BAD label MAKE [15862-15898] -> NOT RESOLVED | coverage 76%, longest gap 3f
+    BAD label MAKE [16031-16061] -> NOT RESOLVED | coverage 19%, longest gap 25f
+    ok  label MAKE [23007-23073] -> MAKE @f23069 (make_confirmed) | coverage 79%, longest gap 8f
+    BAD label MAKE [23174-23192] -> MISS @f23184 (miss_rim_out_sideways) | coverage 89%, longest gap 2f
+    BAD label MISS [23405-23465] -> NOT RESOLVED
+    ok  label MAKE [23559-23601] -> MAKE @f23592 (make_confirmed) | coverage 58%, longest gap 18f
+    BAD label MAKE [23706-23730] -> NOT RESOLVED | coverage 92%, longest gap 2f
+    BAD spurious MISS @f1139 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f1862 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f2518 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f5894 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f8663 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f9649 (miss_in_and_out) — no labeled shot here
+    BAD spurious MAKE @f10473 (make_confirmed) — no labeled shot here
+    BAD spurious MISS @f15740 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f23167 (miss_occlusion_gap) — no labeled shot here
+[FAIL] public/commons_hardwick/hazen_girls_v_enosburg_2025-12-12.webm: got 31M/48m, expected 51M/28m | false makes 4 | ball in 29% of frames
+    BAD label MAKE [9690-9738] -> MISS @f9779 (miss_occlusion_gap) | coverage 51%, longest gap 12f
+    BAD label MAKE [10538-10610] -> NOT RESOLVED | coverage 64%, longest gap 16f
+    ok  label MAKE [36913-36979] -> MAKE @f36978 (make_confirmed) | coverage 49%, longest gap 20f
+    ok  label MAKE [42825-42879] -> MAKE @f42878 (make_confirmed) | coverage 62%, longest gap 10f
+    BAD label MAKE [43812-43860] -> MISS @f43911 (miss_occlusion_gap) | coverage 71%, longest gap 10f
+    BAD label MISS [46370-46400] -> NOT RESOLVED
+    BAD label MISS [48248-48278] -> NOT RESOLVED
+    BAD label MISS [48702-48768] -> NOT RESOLVED
+    BAD label MAKE [48977-49013] -> NOT RESOLVED | coverage 57%, longest gap 10f
+    ok  label MAKE [51145-51217] -> MAKE @f51213 (make_confirmed) | coverage 77%, longest gap 7f
+    ok  label MAKE [54208-54274] -> MAKE @f54273 (make_confirmed) | coverage 88%, longest gap 4f
+    BAD label MAKE [56096-56126] -> NOT RESOLVED | coverage 32%, longest gap 13f
+    ok  label MAKE [62466-62544] -> MAKE @f62539 (make_confirmed) | coverage 67%, longest gap 16f
+    ok  label MAKE [71896-71950] -> MAKE @f71949 (make_confirmed) | coverage 76%, longest gap 4f
+    ok  label MAKE [76112-76202] -> MAKE @f76201 (make_confirmed) | coverage 79%, longest gap 16f
+    ok  label MAKE [77281-77371] -> MAKE @f77368 (make_confirmed) | coverage 93%, longest gap 4f
+    BAD label MISS [79827-79863] -> NOT RESOLVED
+    BAD label MAKE [81221-81263] -> NOT RESOLVED | coverage 60%, longest gap 11f
+    ok  label MAKE [82472-82556] -> MAKE @f82551 (make_confirmed) | coverage 81%, longest gap 8f
+    BAD label MAKE [84712-84766] -> NOT RESOLVED | coverage 75%, longest gap 10f
+    ok  label MAKE [92947-93013] -> MAKE @f93012 (make_confirmed) | coverage 69%, longest gap 11f
+    ok  label MAKE [94014-94068] -> MAKE @f94063 (make_confirmed) | coverage 75%, longest gap 8f
+    BAD label MISS [95015-95051] -> NOT RESOLVED
+    ok  label MAKE [97339-97369] -> MAKE @f97360 (make_confirmed) | coverage 48%, longest gap 8f
+    BAD label MISS [98228-98288] -> NOT RESOLVED
+    BAD label MAKE [100940-101054] -> MISS @f101048 (miss_rim_out_sideways) | coverage 86%, longest gap 10f
+    BAD label MAKE [102684-102708] -> NOT RESOLVED | coverage 48%, longest gap 9f
+    ok  label MAKE [106714-106786] -> MAKE @f106789 (make_confirmed) | coverage 52%, longest gap 18f
+    ok  label MAKE [116952-116988] -> MAKE @f116985 (make_confirmed) | coverage 57%, longest gap 14f
+    BAD label MAKE [123447-123495] -> MISS @f123478 (miss_below_without_inner) | coverage 53%, longest gap 12f
+    BAD label MISS [126586-126658] -> NOT RESOLVED
+    BAD label MISS [127281-127335] -> NOT RESOLVED
+    ok  label MAKE [131701-131737] -> MAKE @f131738 (make_confirmed) | coverage 49%, longest gap 12f
+    BAD label MAKE [136300-136330] -> NOT RESOLVED | coverage 48%, longest gap 10f
+    BAD label MAKE [136880-136922] -> MISS @f136913 (miss_below_without_inner) | coverage 70%, longest gap 3f
+    BAD label MAKE [137809-137839] -> NOT RESOLVED | coverage 13%, longest gap 27f
+    BAD label MAKE [139307-139373] -> NOT RESOLVED | coverage 73%, longest gap 10f
+    BAD label MAKE [141573-141597] -> NOT RESOLVED | coverage 16%, longest gap 21f
+    BAD label MAKE [142015-142075] -> MISS @f142070 (miss_below_without_inner) | coverage 100%, longest gap 0f
+    BAD label MAKE [190426-190474] -> MISS @f190469 (miss_below_without_inner) | coverage 82%, longest gap 4f
+    BAD label MISS [196800-196824] -> NOT RESOLVED
+    BAD label MAKE [198780-198816] -> NOT RESOLVED | coverage 41%, longest gap 18f
+    BAD label MAKE [199525-199567] -> MISS @f199588 (miss_occlusion_gap) | coverage 63%, longest gap 16f
+    ok  label MAKE [200842-200884] -> MAKE @f200885 (make_confirmed) | coverage 91%, longest gap 2f
+    ok  label MAKE [202838-202892] -> MAKE @f202891 (make_confirmed) | coverage 75%, longest gap 8f
+    ok  label MAKE [209807-209873] -> MAKE @f209870 (make_confirmed) | coverage 73%, longest gap 14f
+    ok  label MAKE [217489-217525] -> MAKE @f217526 (make_confirmed) | coverage 57%, longest gap 12f
+    BAD label MAKE [220801-220849] -> NOT RESOLVED | coverage 49%, longest gap 18f
+    ok  label MAKE [234063-234105] -> MAKE @f234108 (make_confirmed) | coverage 67%, longest gap 14f
+    BAD label MAKE [248355-248409] -> MISS @f248402 (miss_below_without_inner) | coverage 71%, longest gap 8f
+    BAD label MAKE [249012-249048] -> NOT RESOLVED | coverage 43%, longest gap 14f
+    ok  label MAKE [250966-251032] -> MAKE @f251031 (make_confirmed) | coverage 72%, longest gap 16f
+    ok  label MAKE [251629-251695] -> MAKE @f251698 (make_confirmed) | coverage 67%, longest gap 6f
+    ok  label MAKE [258139-258175] -> MAKE @f258178 (make_confirmed) | coverage 100%, longest gap 0f
+    ok  label MAKE [259282-259312] -> MAKE @f259316 (make_confirmed) | coverage 90%, longest gap 2f
+    BAD label MAKE [262251-262293] -> MISS @f262290 (miss_rim_out_sideways) | coverage 81%, longest gap 4f
+    ok  label MAKE [267038-267104] -> MAKE @f267109 (make_confirmed) | coverage 66%, longest gap 18f
+    BAD label MAKE [267923-267959] -> NOT RESOLVED | coverage 84%, longest gap 4f
+    BAD label MISS [268251-268293] -> NOT RESOLVED
+    BAD label MAKE [271783-271831] -> NOT RESOLVED | coverage 71%, longest gap 4f
+    ok  label MAKE [277907-277955] -> MAKE @f277950 (make_confirmed) | coverage 65%, longest gap 16f
+    BAD spurious MAKE @f35060 (make_confirmed) — no labeled shot here
+    BAD spurious MISS @f94937 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f98363 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f102237 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f118411 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MAKE @f125017 (make_confirmed) — no labeled shot here
+    BAD spurious MISS @f191114 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f199748 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MAKE @f201606 (make_confirmed) — no labeled shot here
+    BAD spurious MAKE @f207518 (make_confirmed) — no labeled shot here
+    BAD spurious MISS @f229820 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f243395 (miss_occlusion_gap) — no labeled shot here
+    BAD spurious MISS @f246717 (miss_below_without_inner) — no labeled shot here
+    BAD spurious MISS @f279121 (miss_below_without_inner) — no labeled shot here
+
+SUMMARY: 4/15 clips pass | 221/329 labeled shots correct | false makes 5 | spurious shots 33
+
+=== Gate A ===
+Makes counted: 158/244 (64.8%)  [need >= 90%]
+False makes: 0/85 labeled misses, + 5 spurious makes -> 95% upper bound on false-make rate 12.0%  [need 0 false makes]
+By miss type (misses, false makes, resolved as MISS, 95% UB):
+  airball           1    0    1   95.0%
+  back_rim         23    0   19   12.2%
+  front_rim        36    0   26    8.0%
+  other            13    0    7   20.6%
+  side_rim_out     12    0   10   22.1%
+By source (makes counted/makes, false makes/misses):
+  commons:bandits_practice   53/87     1/18  
+  commons:hardwick_game    23/43     0/31  
+  commons:hardwick_game_HELDOUT_for_tracker_fix   26/51     4/28  
+  github:aggie              5/5      0/1   
+  github:artur              3/3      0/1   
+  github:chonyy             4/4      0/4   
+  github:kyle               0/1      0/0   
+  github:lf                18/20     0/2   
+  github:video_test_5      26/30     0/0   
+Lost makes by exit reason:
+  make lost: never armed                   57
+  make lost: miss_occlusion_gap            12
+  make lost: miss_below_without_inner      10
+  make lost: miss_rim_out_sideways         6
+  make lost: miss_in_and_out               1
+GATE A: FAIL
