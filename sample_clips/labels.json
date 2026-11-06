@@ -4,6 +4,16 @@
     "chonyy_one_score_one_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 214,
+        "fps": 30.0,
+        "hoop_seen": 0.995,
+        "hoop_move_p95": 0.059,
+        "hoop_size_ratio": 1.078,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:chonyy",
         "repo": "chonyy/AI-basketball-analysis",
@@ -28,6 +38,16 @@
     "chonyy_two_score_two_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 403,
+        "fps": 30.0,
+        "hoop_seen": 0.985,
+        "hoop_move_p95": 0.057,
+        "hoop_size_ratio": 1.097,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:chonyy",
         "repo": "chonyy/AI-basketball-analysis",
@@ -66,6 +86,16 @@
     "chonyy_two_score_three_miss.mp4": {
       "verified": "frames viewed 2026-11-03",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 503,
+        "fps": 30.0,
+        "hoop_seen": 0.99,
+        "hoop_move_p95": 0.055,
+        "hoop_size_ratio": 1.093,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:chonyy",
         "repo": "chonyy/AI-basketball-analysis",
@@ -109,6 +139,16 @@
     "video_test_5.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 3378,
+        "fps": 29.97,
+        "hoop_seen": 0.937,
+        "hoop_move_p95": 0.764,
+        "hoop_size_ratio": 1.168,
+        "multi_ball": 0.013
+      },
       "source": {
         "group": "github:video_test_5",
         "repo": "avishah3/AI-Basketball-Shot-Detection-Tracker",
@@ -301,6 +341,16 @@
     "chonyy_sample_video.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 101,
+        "fps": 30.0,
+        "hoop_seen": 0.98,
+        "hoop_move_p95": 0.086,
+        "hoop_size_ratio": 1.126,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:chonyy",
         "repo": "chonyy/AI-basketball-analysis",
@@ -318,6 +368,16 @@
     "lf_shot_detection.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 1116,
+        "fps": 30.0,
+        "hoop_seen": 0.973,
+        "hoop_move_p95": 0.055,
+        "hoop_size_ratio": 1.084,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:lf",
         "repo": "LittleFish-Coder/basketball-sports-ai",
@@ -391,6 +451,16 @@
     "lf_back.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03; full shot order re-confirmed by user",
       "split": "dev",
+      "camera_class": "fixed",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 1221,
+        "fps": 29.995,
+        "hoop_seen": 0.949,
+        "hoop_move_p95": 0.041,
+        "hoop_size_ratio": 1.082,
+        "multi_ball": 0.012
+      },
       "source": {
         "group": "github:lf",
         "repo": "LittleFish-Coder/basketball-sports-ai",
@@ -464,6 +534,16 @@
     "lf_alan.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 658,
+        "fps": 24.0,
+        "hoop_seen": 0.778,
+        "hoop_move_p95": 1.75,
+        "hoop_size_ratio": 1.387,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:lf",
         "repo": "LittleFish-Coder/basketball-sports-ai",
@@ -487,6 +567,16 @@
     "artur_vid29.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 884,
+        "fps": 29.99,
+        "hoop_seen": 0.997,
+        "hoop_move_p95": 2.151,
+        "hoop_size_ratio": 1.12,
+        "multi_ball": 0.0
+      },
       "source": {
         "group": "github:artur",
         "repo": "arturchichorro/bballvision",
@@ -524,6 +614,16 @@
     "kyle_test_video.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 353,
+        "fps": 29.97,
+        "hoop_seen": 1.0,
+        "hoop_move_p95": 1.17,
+        "hoop_size_ratio": 1.728,
+        "multi_ball": 0.006
+      },
       "source": {
         "group": "github:kyle",
         "repo": "kylephan5/basketball-shot-tracker",
@@ -541,6 +641,16 @@
     "aggie_NathanBBall.mov": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 806,
+        "fps": 29.963,
+        "hoop_seen": 0.963,
+        "hoop_move_p95": 0.713,
+        "hoop_size_ratio": 1.062,
+        "multi_ball": 0.002
+      },
       "source": {
         "group": "github:aggie",
         "repo": "AggieSportsAnalytics/ShotTracker",
@@ -590,6 +700,16 @@
     "public/commons_hardwick/hazen_girls_v_lyndon_2026-02-04.webm": {
       "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 277327,
+        "fps": 60.0,
+        "hoop_seen": 0.307,
+        "hoop_move_p95": 14.058,
+        "hoop_size_ratio": 2.432,
+        "multi_ball": 0.035
+      },
       "source": {
         "group": "commons:hardwick_game",
         "url": "https://commons.wikimedia.org/wiki/File:Girls_Varsity_Basketball_v._Lyndon_-_February_4,_2026.webm",
@@ -1376,6 +1496,16 @@
     "public/commons_bandits/bandits_practice_02.webm": {
       "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "multi",
+      "camera_profile": {
+        "frames": 13150,
+        "fps": 60.0,
+        "hoop_seen": 0.964,
+        "hoop_move_p95": 1.734,
+        "hoop_size_ratio": 1.159,
+        "multi_ball": 0.082
+      },
       "source": {
         "group": "commons:bandits_practice",
         "license": "CC BY 3.0",
@@ -1654,6 +1784,16 @@
     "public/commons_bandits/bandits_practice_01.webm": {
       "verified": "Claude subagents from contact sheets (Sonnet for the game, Opus for Bandits), spot-checked by Claude; NOT verified by a human",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 3934,
+        "fps": 60.0,
+        "hoop_seen": 0.295,
+        "hoop_move_p95": 10.778,
+        "hoop_size_ratio": 2.563,
+        "multi_ball": 0.031
+      },
       "source": {
         "group": "commons:bandits_practice",
         "license": "CC BY 3.0",
@@ -1682,6 +1822,16 @@
     "public/commons_bandits/bandits_practice_03.webm": {
       "verified": "Claude subagents (Sonnet) from contact sheets, spot-checked by Claude; NOT verified by a human",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "multi",
+      "camera_profile": {
+        "frames": 23828,
+        "fps": 60.0,
+        "hoop_seen": 0.747,
+        "hoop_move_p95": 6.488,
+        "hoop_size_ratio": 3.043,
+        "multi_ball": 0.085
+      },
       "source": {
         "group": "commons:bandits_practice",
         "license": "CC BY 3.0",
@@ -2315,6 +2465,16 @@
     "public/commons_hardwick/hazen_girls_v_enosburg_2025-12-12.webm": {
       "verified": "Claude subagents (Sonnet) from contact sheets; NOT verified by a human",
       "split": "dev",
+      "camera_class": "moving",
+      "ball_count": "single",
+      "camera_profile": {
+        "frames": 290380,
+        "fps": 60.0,
+        "hoop_seen": 0.352,
+        "hoop_move_p95": 9.64,
+        "hoop_size_ratio": 2.036,
+        "multi_ball": 0.037
+      },
       "source": {
         "group": "commons:hardwick_game_HELDOUT_for_tracker_fix",
         "license": "CC BY 4.0",
