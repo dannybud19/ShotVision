@@ -358,24 +358,31 @@ def _group(meta: dict, clip: str) -> str:
 
 def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make_rate: float = 0.90) -> bool:
     """Gate A: makes counted / makes, false makes / misses (with the 95% upper
-    bound), by miss type and by source group. Returns pass/fail."""
+    bound), by miss type, by source group and by camera class. Returns the
+    in-scope (fixed camera, single ball) pass/fail."""
     from collections import defaultdict
 
     makes = counted = misses = false_makes = 0
     by_type = defaultdict(lambda: [0, 0, 0])  # misses, false makes, resolved MISS
     by_group = defaultdict(lambda: [0, 0, 0, 0])  # makes, counted, misses, false makes
+    by_class = defaultdict(lambda: [0, 0, 0, 0])  # makes, counted, misses, false makes
     spurious_makes = 0
     reasons = defaultdict(int)
     for sc in scores:
         g = _group(meta.get(sc.clip, {}), sc.clip)
+        entry = meta.get(sc.clip, {})
+        cc, bc = entry.get("camera_class"), entry.get("ball_count")
+        ck = f"{cc}/{bc}" if cc and bc else "unclassified"
         for c in sc.checks:
             got = c.result.outcome.value if c.result is not None else None
             if c.label["outcome"] == "MAKE":
                 makes += 1
                 by_group[g][0] += 1
+                by_class[ck][0] += 1
                 if got == "MAKE":
                     counted += 1
                     by_group[g][1] += 1
+                    by_class[ck][1] += 1
                 else:
                     reasons["make lost: " + (c.result.reason.value if c.result else "never armed")] += 1
             else:
@@ -383,16 +390,19 @@ def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make
                 t = c.label.get("miss_type") or "untyped"
                 by_type[t][0] += 1
                 by_group[g][2] += 1
+                by_class[ck][2] += 1
                 if got == "MAKE":
                     false_makes += 1
                     by_type[t][1] += 1
                     by_group[g][3] += 1
+                    by_class[ck][3] += 1
                 elif got == "MISS":
                     by_type[t][2] += 1
         for r in sc.spurious:
             if r.outcome.value == "MAKE":
                 spurious_makes += 1
                 by_group[g][3] += 1
+                by_class[ck][3] += 1
 
     total_false = false_makes + spurious_makes
     ub = binomial_upper_bound(total_false, misses)
@@ -408,12 +418,26 @@ def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make
     print("By source (makes counted/makes, false makes/misses):")
     for g, (mk, ct, ms, fm) in sorted(by_group.items()):
         print(f"  {g:<22} {ct:>4}/{mk:<4} {fm:>3}/{ms:<4}")
+    print("By camera class (makes counted/makes, make rate, false makes/misses, 95% UB):")
+    for ck in ("fixed/single", "fixed/multi", "moving/single", "moving/multi", "unclassified"):
+        mk, ct, ms, fm = by_class.get(ck, [0, 0, 0, 0])
+        rate = 100 * ct / mk if mk else 0.0
+        print(f"  {ck:<16} {ct:>4}/{mk:<4} {rate:>5.1f}%  {fm:>3}/{ms:<4}  "
+              f"{100 * binomial_upper_bound(fm, ms):5.1f}%")
     if reasons:
         print("Lost makes by exit reason:")
         for r, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
             print(f"  {r:<40} {n}")
-    print(f"GATE A: {'PASS' if passed else 'FAIL'}")
-    return passed
+    print(f"GATE A (all clips, old definition): {'PASS' if passed else 'FAIL'}")
+
+    in_scope = by_class.get("fixed/single", [0, 0, 0, 0])
+    is_makes, is_counted, is_misses, is_false = in_scope
+    is_rate = is_counted / is_makes if is_makes else 0.0
+    is_passed = is_false == 0 and is_rate >= min_make_rate
+    print(f"GATE A (in scope: fixed camera, single ball): {'PASS' if is_passed else 'FAIL'}")
+    print(f"STRESS TEST (out of scope): makes {counted - is_counted}/{makes - is_makes}, "
+          f"false makes {total_false - is_false}/{misses - is_misses}")
+    return is_passed
 
 
 def parse_args() -> argparse.Namespace:
