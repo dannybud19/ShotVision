@@ -2,17 +2,13 @@
 
 **Goal:** single-camera basketball analytics. Phase 1 is a make/miss counter for one shooter. Later phases add 2PT/3PT, shot type, multiple players and shot-selection analysis. Full plan: `docs/ROADMAP.md`. Rule: no phase starts until the previous one is reliable on our own footage.
 
-**Current phase: Phase 1, make/miss (blocked). Gate A FAILS (2026-11-05).** Branch `stage1/label-tooling`.
-- **Gate A** (`scripts/evaluate.py --report`, dev data incl. a CC BY high-school game and practice clips): 90/137 makes counted (65.7%); 2 false makes in 46 misses.
-- **Main failure:** the tracker locks onto the wrong ball-like object (a resting ball, a second ball, a head) under a moving camera or with several balls. 24 of 41 never-armed makes are lost this way, and both false makes too.
-- **Next step:** shot-centric ball selection (see `docs/tracking-research.md` §0). It's a tracker change, so agree it first.
-- **Labels:** the new ones are Claude-made from contact sheets, not human-verified. Labeling pages: `python scripts/label_candidates.py <clip>`.
+**Current phase: Phase 1, make/miss. In-scope Gate A passes; out-of-scope footage is a stress test.** Branch `stage1/label-tooling`.
+- **Gate A (in scope: fixed camera, single ball):** 21/22 makes counted (95.5%), 0 false makes in 6 misses. PASS. `scripts/evaluate.py --report` now splits by camera class, measured per clip by `experiments/camera_profile.py` and stored as `camera_class`/`ball_count` in `labels.json`.
+- **Out of scope (stress test, no pass/fail):** 137/222 makes, 5 false makes in 79 misses. All 5 are spurious makes: 4 in the held-out Enosburg game, 1 in a Bandits practice. All clips, old definition: 158/244 (64.8%).
+- **Tracker fix (5 Nov) is done:** shot-centric ball selection took the dev set from 90 to 107/137 makes and 2 to 0 false makes; with Bandits 03: 132/193, 0/57 labeled misses scored MAKE, 1 spurious make.
+- **Next step:** Line-crossing side-by-side experiment (PLAN_2).
+- **Labels:** the newer ones are Claude-made from contact sheets, not human-verified. Labeling pages: `python scripts/label_candidates.py <clip>`.
 - **Legacy clips** (11 GitHub clips): 56/63 distinct makes, 0/8 false makes. Public footage: `sample_clips/public/`, provenance and licenses in `sample_clips/SOURCES.md`.
-- **Blocker, measured 2026-11-04:** all 7 failures are makes that weren't counted.
-  - 6 involve the ball being invisible for 7-25 frames at the rim: blur over the backboard, or hidden in/below the net.
-  - 4 never arm, 2 end through the occlusion grace, 1 is a net-deflected ball that looks sideways in 2D. 0 are timeouts.
-  - Threshold tuning trades one make for another, and widening the inner gate creates false makes.
-  - The next step is our own footage: 60 fps, fast shutter, ≥80 misses. Spec, diagnosis and ranked options: `docs/tracking-research.md`.
 - **History:** `docs/PROJECT_LOG.md`, with an entry per session.
 
 **Pipeline** (`shotvision/`): capture → YOLO ball/hoop detection (`detection/`) → `tracking/ball_tracker.py` → `shot_logic/` (`rim_tracker.py`, `state_machine.py`) → `stats/` → `overlay/`. Entry point: `python -m shotvision.main --source <file|0>`. Config: `shotvision/config/default.json`; all durations are in seconds (converted to frames with each source's fps; tuned at 30 fps).

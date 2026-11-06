@@ -10,4 +10,6 @@ sample_clips/*
 !sample_clips/.gitkeep
 !sample_clips/SOURCES.md
 experiments/.cache/
+experiments/results/*.txt
+experiments/results/*.json
 !sample_clips/labels.json

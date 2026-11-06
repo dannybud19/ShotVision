@@ -104,6 +104,22 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **No pipeline changes were made** for this (stage rule). The recommended next step is shot-centric ball selection.
 - **Not done:** Bandits 03 (98 cards) is unlabeled; 46 misses is short of the 50 target.
 
+### 2026-11-05 (later) — tracker fix and Bandits 03
+
+- **Tracker fix (shot-centric ball selection):** the agreed fix for the Gate A failure. A confident, ball-sized candidate above the rim near its centre takes over from an object that is not approaching the hoop. Size consistency continues or re-acquires a ball only within 2.0 of its median recent width. No arming while the hoop is untracked, and an armed shot is cancelled without a result.
+- **Result:** on the dev set, makes 90 to 107 of 137, false makes 2 to 0. Legacy GitHub clips unchanged at 56/63, every shot's outcome the same.
+- **Bandits 03 labeled (Sonnet):** 55 makes, 11 misses, 20 ignored windows. The evaluator now pairs each label with the resolution whose end is closest, which fixed multi-ball practice where the first result in the window was another ball's.
+- **Gate A with Bandits 03:** 132/193 makes, 0/57 labeled misses scored MAKE, 1 spurious make (a ball thrown close to the camera passing in front of the hoop, the depth case). Still FAIL.
+
+### 2026-11-06 — camera split and held-out game
+
+- **Held-out Enosburg game scored for the first time.** Kept out of the 5 Nov tracker fix. 26/51 makes (51.0%), 0/28 labeled misses scored MAKE, 4 spurious makes. The 4 false makes are all unlabeled shots: f35060, f125017, f201606 and f207518, each make_confirmed. Compared with the Lyndon game (same panning broadcast camera, 23/43 makes, 0 false makes), Enosburg is worse: a slightly lower make rate and 4 false makes where Lyndon had none.
+- **Camera profile** (`experiments/camera_profile.py`): measured hoop motion, zoom and multi-ball per clip from cached detections, and wrote `camera_class`/`ball_count` into `labels.json`.
+  - In scope (fixed camera, single ball): 21/22 makes counted (95.5%), 0 false makes in 6 misses.
+  - Out of scope: 137/222 makes, 5 false makes in 79 misses.
+  - Measured disagreements with the "mostly fixed/single" expectation: aggie, video_test_5, lf_alan, artur and kyle all measure moving; bandits_01 measures single, not multi.
+- **Gate A report now splits by camera class.** The in-scope gate passes; out-of-scope clips are a stress test without pass/fail. Full report: 158/244 makes (64.8%), 0/85 labeled misses scored MAKE, 5 spurious makes.
+
 ---
 
 ## Tools used

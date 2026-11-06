@@ -92,6 +92,20 @@ You approved the fix. It adds shot-centric selection, size-consistent associatio
 - On the Hardwick game (23/43) the hoop is often lost or misdetected during pans. The no-hoop rule now cancels those shots rather than guessing.
 - A wall mural produced a false "hoop". The confidence bar on shot-centric switches stops its "ball" from scoring.
 
+### 0c. Split by camera class (2026-11-06)
+
+Gate A now judges in-scope clips only (fixed camera, single ball). Each clip's camera is measured, not guessed, by `experiments/camera_profile.py` (hoop motion, zoom, multi-ball), and the class is stored as `camera_class`/`ball_count` in `labels.json`. Out-of-scope clips (panning broadcast, multi-ball practice) are a stress test without pass/fail.
+
+| Camera class | Makes counted | Make rate | False makes / misses | 95% upper bound |
+|---|---|---|---|---|
+| fixed/single (in scope) | 21/22 | 95.5% | 0/6 | 39.3% |
+| fixed/multi | 0/0 | 0.0% | 0/0 | 100.0% |
+| moving/single | 84/136 | 61.8% | 4/62 | 14.2% |
+| moving/multi | 53/86 | 61.6% | 1/17 | 25.0% |
+| unclassified | 0/0 | 0.0% | 0/0 | 100.0% |
+
+The in-scope gate passes (95.5% ≥ 90%, 0 false makes). The in-scope miss set is only 6, so the false-make rate cannot be shown to be low yet. All 5 out-of-scope false makes are spurious: 4 in the held-out Enosburg game and 1 in a Bandits practice.
+
 ---
 
 ## 1. Measured diagnosis

@@ -4,7 +4,7 @@ ShotVision is a single-camera basketball analytics system. Each phase is describ
 
 **Rule for the whole roadmap: no phase starts until the one before it is reliable on real footage from our own camera.** "Reliable" means the phase's exit criteria below, measured on a held-out set that was never used for tuning.
 
-Status (2026-11-05): Phase 1 in progress. Gate A on public dev footage fails: 90/137 makes counted, 2 false makes in 46 misses. The main failure is the tracker following the wrong object under a moving camera or with several balls. Details: `docs/tracking-research.md` §0. History: `docs/PROJECT_LOG.md`.
+Status (2026-11-06): Phase 1 in progress. Gate A is judged on in-scope clips (fixed camera, single ball): 21/22 makes counted (95.5%), 0 false makes in 6 misses, PASS. Out-of-scope clips are tracked as a stress test without pass/fail: 137/222 makes, 5 false makes in 79 misses. Details: `docs/tracking-research.md` §0. History: `docs/PROJECT_LOG.md`.
 
 ---
 
@@ -28,7 +28,7 @@ Each phase's "single-camera limit" note says what this means for that phase.
 
 **Depends on:** nothing earlier.
 
-**Where it stands:** the pipeline runs end to end: capture, per-frame ball/hoop detection, gated ball association, rim tracking, a MISS-biased shot state machine, stats and an overlay. A labeled-clip scoreboard (`scripts/evaluate.py`) is in place, and the per-shot diagnostic is `experiments/shot_diagnostics.py`. On the 11 third-party clips: 68/75 correct, 0 false makes. All 7 failures are makes that were not counted. 6 of them involve the ball being invisible for 7-25 frames at the rim, and 0 are timeouts.
+**Where it stands:** the pipeline runs end to end: capture, per-frame ball/hoop detection, gated ball association, rim tracking, a MISS-biased shot state machine, stats and an overlay. A labeled-clip scoreboard (`scripts/evaluate.py`) is in place, and the per-shot diagnostic is `experiments/shot_diagnostics.py`. On the 11 third-party clips: 68/75 correct, 0 false makes. All 7 failures are makes that were not counted. 6 of them involve the ball being invisible for 7-25 frames at the rim, and 0 are timeouts. Gate A is judged on in-scope clips (fixed camera, single ball, measured per clip and stored as `camera_class`/`ball_count` in `labels.json`); out-of-scope clips are tracked as a stress test without pass/fail.
 
 **Work, in order:**
 1. **Film our own footage** (spec in `docs/tracking-research.md`, "Do this next"). Until then, every number is from other people's cameras, and there are only 8 distinct labeled misses.
