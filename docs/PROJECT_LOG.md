@@ -139,6 +139,17 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 
 - Conclusion: the line method gains only 2 makes over SV (160 vs 158) but costs 18 false makes and 28 spurious. The gap limit and the arc do not remove those false makes. The most conservative hybrid H1 rescues 5 makes but adds 2 false makes and 1 spurious. No variant keeps 0 false makes, so the method is not safe to adopt.
 
+### 2026-11-09 — PLAN_3 Part A: gate minimum, review sheets, rotation, live check
+
+- **A1:** merged `exp/line-crossing` (merge 4c13da3), reran the experiment with the camera split (SV unchanged: 158/244, 0/85, 5 spurious), pasted the follow-up docs (8a1ac9e), removed the `../ShotVision-exp` worktree (branch kept).
+- **A2:** in-scope Gate A needs at least 50 misses to PASS, otherwise `NOT ENOUGH MISSES TO JUDGE (6 < 50)` (90ef637). Only that verdict line changed; exit code is now 1. New `--min-misses` flag.
+- **A3:** `experiments/review_sheets.py frames` built sheets for the 4 unlabelled Enosburg makes (41181e4). ffmpeg is not installed, so frames are read with cv2; the hoop boxes line up with the hoop on all 4 sheets.
+- **A4:** `review_sheets.py camera` built hoop track sheets for the 5 "moving" GitHub clips and `lf_back` (60c518d). No tags were changed.
+- **A5:** `FrameSource` now asks OpenCV to apply phone rotation metadata and exposes `rotation` (4eadeef). All 16 labelled clips have no rotation flag, and the scoreboard is identical. Rotation on a real flagged clip is unverified (no ffmpeg).
+- **A6:** `experiments/live_check.py` (335b7cc): headless run with processing fps, latency and compare-to-replay. Not run by the agent; the owner runs it.
+- **A7:** `docs/plans/PLAN_3_decisions.md` for the owner (f5d1694).
+- Tests: 164 pass, 1 skipped (needs ffmpeg), 2 model tests deselected.
+
 ---
 
 ## Tools used

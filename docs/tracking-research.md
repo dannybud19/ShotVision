@@ -110,6 +110,21 @@ The in-scope gate passes (95.5% ≥ 90%, 0 false makes). The in-scope miss set i
 
 Reimplemented the avishah3 "line through the rim" method from a description (no code copied) and ran it side by side with ShotVision on cached detections. The line method gains only 2 makes over ShotVision (160 vs 158) but costs 18 false makes and 28 spurious (95% upper bound 63.4%). The gap limit and the arc do not remove those false makes; only the strict make zone does, and it costs 10 makes. The most conservative hybrid (H1) rescues 5 makes but adds 2 false makes and 1 spurious. No variant is at 0 false makes, so the line method is not a safe rescue for the invisible-at-rim makes. Full results: `experiments/results/line_crossing_2026-11-06.md`.
 
+### 0e. Phase 1 polish (PLAN_3 Part A, 2026-11-09)
+
+The in-scope gate now needs at least 50 in-scope misses to pass, so with 6 it prints `NOT ENOUGH MISSES TO JUDGE (6 < 50)` instead of PASS (a false make or a make rate below 90% still prints FAIL). Review sheets (`experiments/review_sheets.py`) and a headless live check (`experiments/live_check.py`) now exist, and the owner's decisions on them are pending in `docs/plans/PLAN_3_decisions.md`.
+
+Hoop movement evidence for the five GitHub clips tagged "moving" (and `lf_back` for comparison), printed by `review_sheets.py camera`:
+
+| clip | frames_with_hoop | share_with_2plus_hoops | max_jump | camera_class |
+|---|---|---|---|---|
+| video_test_5.mp4 | 3165 | 0.0000 | 0.90 | moving |
+| aggie_NathanBBall.mov | 776 | 0.0000 | 0.82 | moving |
+| lf_alan.mp4 | 512 | 0.0000 | 1.81 | moving |
+| artur_vid29.mp4 | 881 | 0.0000 | 2.31 | moving |
+| kyle_test_video.mp4 | 353 | 0.0000 | 1.49 | moving |
+| lf_back.mp4 | 1159 | 0.0000 | 0.18 | fixed |
+
 ---
 
 ## 1. Measured diagnosis

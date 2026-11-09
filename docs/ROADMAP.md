@@ -4,7 +4,7 @@ ShotVision is a single-camera basketball analytics system. Each phase is describ
 
 **Rule for the whole roadmap: no phase starts until the one before it is reliable on real footage from our own camera.** "Reliable" means the phase's exit criteria below, measured on a held-out set that was never used for tuning.
 
-Status (2026-11-06): Phase 1 in progress. Gate A is judged on in-scope clips (fixed camera, single ball): 21/22 makes counted (95.5%), 0 false makes in 6 misses, PASS. Out-of-scope clips are tracked as a stress test without pass/fail: 137/222 makes, 5 false makes in 79 misses. Details: `docs/tracking-research.md` §0. History: `docs/PROJECT_LOG.md`.
+Status (2026-11-06): Phase 1 in progress. Gate A is judged on in-scope clips (fixed camera, single ball): 21/22 makes counted (95.5%), 0 false makes in 6 misses. The in-scope gate needs at least 50 misses before it can pass, so it currently reports NOT ENOUGH MISSES TO JUDGE. Out-of-scope clips are tracked as a stress test without pass/fail: 137/222 makes, 5 false makes in 79 misses. Details: `docs/tracking-research.md` §0. History: `docs/PROJECT_LOG.md`.
 
 ---
 
