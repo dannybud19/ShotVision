@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+
 import cv2
 import numpy as np
 import pytest
@@ -103,3 +106,37 @@ def test_source_key_distinguishes_device_and_url(monkeypatch):
 
     url_src = FrameSource("rtsp://cam.local/stream")
     assert url_src.source_key == "url:rtsp://cam.local/stream"
+
+
+def test_normal_clip_reports_no_rotation(tmp_path):
+    clip_path = tmp_path / "clip.mp4"
+    _write_test_clip(clip_path)
+    with FrameSource(str(clip_path)) as src:
+        assert src.rotation == 0
+        assert src.read().shape == (48, 64, 3)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_rotated_clip_is_read_upright(tmp_path):
+    plain = tmp_path / "plain.mp4"
+    rotated = tmp_path / "rotated.mp4"
+    _write_test_clip(plain)
+    commands = (
+        ["ffmpeg", "-v", "error", "-display_rotation", "90", "-i", str(plain), "-c", "copy", str(rotated)],
+        ["ffmpeg", "-v", "error", "-i", str(plain), "-c", "copy", "-metadata:s:v:0", "rotate=90", str(rotated)],
+    )
+    meta = 0
+    for cmd in commands:
+        rotated.unlink(missing_ok=True)
+        subprocess.run(cmd, check=False, capture_output=True)
+        if rotated.exists():
+            cap = cv2.VideoCapture(str(rotated))
+            meta = cap.get(cv2.CAP_PROP_ORIENTATION_META)
+            cap.release()
+            if meta in (90, 270):
+                break
+    if meta not in (90, 270):
+        pytest.skip("ffmpeg could not set a rotation flag")
+    with FrameSource(str(rotated)) as src:
+        assert src.rotation in (90, 270)
+        assert src.read().shape == (64, 48, 3)  # portrait

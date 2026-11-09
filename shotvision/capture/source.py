@@ -45,6 +45,11 @@ class FrameSource:
         if not self._cap.isOpened():
             raise RuntimeError(f"Could not open video source: {source}")
 
+        # Phones store portrait video as landscape pixels plus a rotation flag.
+        # Ask OpenCV to apply the flag so the pipeline always sees the picture upright.
+        if self.type != DEVICE and hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO") and hasattr(self._cap, "set"):
+            self._cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+
     @property
     def is_file(self) -> bool:
         return self.type == FILE
@@ -53,6 +58,14 @@ class FrameSource:
     def fps(self) -> float:
         fps = self._cap.get(cv2.CAP_PROP_FPS)
         return fps if fps and fps > 0 else 30.0
+
+    @property
+    def rotation(self) -> int:
+        """Rotation flag stored in the file, in degrees (0 when absent or unsupported)."""
+        if not hasattr(cv2, "CAP_PROP_ORIENTATION_META"):
+            return 0
+        meta = self._cap.get(cv2.CAP_PROP_ORIENTATION_META)
+        return int(meta) if meta and meta > 0 else 0
 
     @property
     def source_key(self) -> str:
