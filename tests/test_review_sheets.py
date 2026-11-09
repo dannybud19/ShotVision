@@ -2,7 +2,18 @@
 
 No files, no cache, no model: only the frame-window and crop maths.
 """
-from experiments.review_sheets import crop_box, window_frames
+from dataclasses import dataclass
+
+import pytest
+
+from experiments.review_sheets import camera_stats, crop_box, spread_indices, window_frames
+
+
+@dataclass
+class _Det:
+    class_name: str
+    conf: float
+    bbox: tuple
 
 
 def test_window_frames_at_60_fps_defaults():
@@ -36,3 +47,35 @@ def test_crop_box_uses_the_median_not_one_odd_box():
 
 def test_crop_box_with_no_hoop_is_the_full_frame():
     assert crop_box([], (480, 640, 3)) == (0, 0, 640, 480)
+
+
+def test_camera_stats_flags_the_frame_with_a_second_far_hoop():
+    still = _Det("hoop", 0.9, (100, 100, 140, 140))
+    far_and_surer = _Det("hoop", 0.95, (500, 400, 540, 440))
+    dets = [[still] for _ in range(10)]
+    dets[5] = [still, far_and_surer]
+    stats = camera_stats(dets)
+    assert stats["frames_with_hoop"] == 10
+    assert stats["share_with_2plus_hoops"] == pytest.approx(1 / 10)
+    assert 5 in stats["jump_frames"]
+    assert stats["jump_frames"][0] == 5  # the biggest jump comes first
+    assert stats["max_jump"] > 5
+
+
+def test_camera_stats_still_hoop_has_no_jump_and_ignores_low_confidence():
+    dets = [[_Det("hoop", 0.9, (100, 100, 140, 140)), _Det("hoop", 0.4, (500, 400, 540, 440))] for _ in range(6)]
+    stats = camera_stats(dets)
+    assert stats["share_with_2plus_hoops"] == 0.0
+    assert stats["max_jump"] == 0.0
+
+
+def test_camera_stats_with_no_hoop_at_all():
+    stats = camera_stats([[] for _ in range(5)])
+    assert stats["frames_with_hoop"] == 0
+    assert stats["jump_frames"] == []
+
+
+def test_spread_indices_cover_the_clip():
+    idx = spread_indices(1000)
+    assert len(idx) == 8
+    assert idx[0] == 0 and idx[-1] == 999
