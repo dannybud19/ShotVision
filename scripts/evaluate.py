@@ -356,10 +356,13 @@ def _group(meta: dict, clip: str) -> str:
     return src.get("group") or clip.split("/")[0].split("_")[0]
 
 
-def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make_rate: float = 0.90) -> bool:
+def print_gate_report(
+    scores: list["ClipScore"], meta: dict[str, dict], min_make_rate: float = 0.90, min_misses: int = 50
+) -> bool:
     """Gate A: makes counted / makes, false makes / misses (with the 95% upper
-    bound), by miss type, by source group and by camera class. Returns the
-    in-scope (fixed camera, single ball) pass/fail."""
+    bound), by miss type, by source group and by camera class. Returns True
+    only when the in-scope gate passes: 0 false makes, make rate >= min_make_rate
+    and at least min_misses in-scope misses."""
     from collections import defaultdict
 
     makes = counted = misses = false_makes = 0
@@ -433,8 +436,13 @@ def print_gate_report(scores: list["ClipScore"], meta: dict[str, dict], min_make
     in_scope = by_class.get("fixed/single", [0, 0, 0, 0])
     is_makes, is_counted, is_misses, is_false = in_scope
     is_rate = is_counted / is_makes if is_makes else 0.0
-    is_passed = is_false == 0 and is_rate >= min_make_rate
-    print(f"GATE A (in scope: fixed camera, single ball): {'PASS' if is_passed else 'FAIL'}")
+    if is_false > 0 or is_rate < min_make_rate:
+        is_verdict, is_passed = "FAIL", False
+    elif is_misses < min_misses:
+        is_verdict, is_passed = f"NOT ENOUGH MISSES TO JUDGE ({is_misses} < {min_misses})", False
+    else:
+        is_verdict, is_passed = "PASS", True
+    print(f"GATE A (in scope: fixed camera, single ball): {is_verdict}")
     print(f"STRESS TEST (out of scope): makes {counted - is_counted}/{makes - is_makes}, "
           f"false makes {total_false - is_false}/{misses - is_misses}")
     return is_passed
@@ -452,6 +460,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--split", default="all", help="Only clips with this split (dev | test | all)")
     p.add_argument("--report", action="store_true",
                    help="Gate A report (by miss type and source); duplicate clips are excluded")
+    p.add_argument("--min-misses", type=int, default=50,
+                   help="in-scope Gate A needs at least this many labeled misses to PASS (default 50)")
     return p.parse_args()
 
 
@@ -490,7 +500,7 @@ def main() -> int:
         f"false makes {false_makes} | spurious shots {spurious}"
     )
     if args.report:
-        return 0 if print_gate_report(scores, load_clip_meta()) else 1
+        return 0 if print_gate_report(scores, load_clip_meta(), min_misses=args.min_misses) else 1
     return 0 if scores and passed == len(scores) else 1
 
 
