@@ -7,6 +7,7 @@
 - **Out of scope (stress test, no pass/fail):** 137/222 makes, 5 false makes in 79 misses. All 5 are spurious makes: 4 in the held-out Enosburg game, 1 in a Bandits practice. All clips, old definition: 158/244 (64.8%).
 - **Tracker fix (5 Nov) is done:** shot-centric ball selection took the dev set from 90 to 107/137 makes and 2 to 0 false makes; with Bandits 03: 132/193, 0/57 labeled misses scored MAKE, 1 spurious make.
 - **Next step:** Line-crossing side-by-side experiment (PLAN_2).
+- Proposed, needs agreement: keep ShotVision's scoring; do not adopt the line-through-the-rim method (it adds false makes); next measure the in-scope split after PLAN_1's camera_class / ball_count labels land.
 - **Labels:** the newer ones are Claude-made from contact sheets, not human-verified. Labeling pages: `python scripts/label_candidates.py <clip>`.
 - **Legacy clips** (11 GitHub clips): 56/63 distinct makes, 0/8 false makes. Public footage: `sample_clips/public/`, provenance and licenses in `sample_clips/SOURCES.md`.
 - **History:** `docs/PROJECT_LOG.md`, with an entry per session.

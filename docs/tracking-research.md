@@ -106,6 +106,10 @@ Gate A now judges in-scope clips only (fixed camera, single ball). Each clip's c
 
 The in-scope gate passes (95.5% ≥ 90%, 0 false makes). The in-scope miss set is only 6, so the false-make rate cannot be shown to be low yet. All 5 out-of-scope false makes are spurious: 4 in the held-out Enosburg game and 1 in a Bandits practice.
 
+### 0d. Line-through-the-rim side by side (2026-11-06)
+
+Reimplemented the avishah3 "line through the rim" method from a description (no code copied) and ran it side by side with ShotVision on cached detections. The line method gains only 2 makes over ShotVision (160 vs 158) but costs 18 false makes and 28 spurious (95% upper bound 63.4%). The gap limit and the arc do not remove those false makes; only the strict make zone does, and it costs 10 makes. The most conservative hybrid (H1) rescues 5 makes but adds 2 false makes and 1 spurious. No variant is at 0 false makes, so the line method is not a safe rescue for the invisible-at-rim makes. Full results: `experiments/results/line_crossing_2026-11-06.md`.
+
 ---
 
 ## 1. Measured diagnosis

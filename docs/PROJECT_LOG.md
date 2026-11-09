@@ -120,6 +120,25 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
   - Measured disagreements with the "mostly fixed/single" expectation: aggie, video_test_5, lf_alan, artur and kyle all measure moving; bandits_01 measures single, not multi.
 - **Gate A report now splits by camera class.** The in-scope gate passes; out-of-scope clips are a stress test without pass/fail. Full report: 158/244 makes (64.8%), 0/85 labeled misses scored MAKE, 5 spurious makes.
 
+### 2026-11-06 — Line-through-the-rim method side by side with ShotVision (PLAN 2)
+
+- Reimplemented the avishah3 "line through the rim" method from a description (no code copied) in `experiments/line_crossing_experiment.py`, with variants L0-L4 (all/best ball, gap limit, strict zone, arc) and hybrids H1-H3 (ShotVision plus a limited rescue). New tests in `tests/test_line_crossing.py`. 141 tests pass.
+- Ran it against ShotVision on all 15 distinct labeled clips (244 makes, 85 misses) from cached detections.
+
+| variant | makes | false makes / misses | spurious | 95% upper bound |
+| --- | --- | --- | --- | --- |
+| SV | 158/244 | 0/85 | 5 | 12.0% |
+| L0 | 160/244 | 18/85 | 28 | 63.4% |
+| L1 | 155/244 | 17/85 | 23 | 56.5% |
+| L2 | 148/244 | 17/85 | 21 | 54.2% |
+| L3 | 138/244 | 11/85 | 18 | 43.5% |
+| L4 | 118/244 | 12/85 | 16 | 42.3% |
+| H1 | 163/244 | 2/85 | 6 | 16.3% |
+| H2 | 177/244 | 3/85 | 16 | 31.1% |
+| H3 | 175/244 | 4/85 | 15 | 31.1% |
+
+- Conclusion: the line method gains only 2 makes over SV (160 vs 158) but costs 18 false makes and 28 spurious. The gap limit and the arc do not remove those false makes. The most conservative hybrid H1 rescues 5 makes but adds 2 false makes and 1 spurious. No variant keeps 0 false makes, so the method is not safe to adopt.
+
 ---
 
 ## Tools used
