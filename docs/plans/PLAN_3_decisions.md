@@ -53,6 +53,15 @@ COMPARE: SAME
 Owner: paste the `=== Live check ===` block of (b):
 
 ```
+=== Live check ===
+source: 0   source fps: 15.00   processing fps: 29.23   real time: YES (processing fps >= source fps)
+latency ms p50: 12.5  p95: 17.3
+shots: 1  makes: 0  misses: 1
 ```
 
 Owner: anything else Part B should know (or "none"):
+
+- (b) ran with the built-in laptop camera pointed at the room, no basketball in view. The 1 miss is a phantom shot (no ball present); it resolved MISS, not MAKE.
+- (b) finding for later, NOT for Part B to fix: the webcam reports 15 fps but delivered about 29 frames per second. Shot-logic timings are converted to frames using the reported fps, so live time windows would be about half as long as intended. Follow-up: measure the real frame rate on device sources instead of trusting CAP_PROP_FPS.
+- (b) first failed with "AttributeError: 'int' object has no attribute 'isdigit'": the config turns "0" into int 0. Fixed by the owner in shotvision/capture/source.py and experiments/live_check.py (cast source to str), committed separately before this file. Tests: 165 passed, 2 deselected (ffmpeg now installed, rotation test runs).
+- Enosburg start/end frames were set to frame -48 / +6 to match the length of this game's other MAKE labels.
