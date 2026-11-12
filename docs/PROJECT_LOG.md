@@ -150,6 +150,16 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **A7:** `docs/plans/PLAN_3_decisions.md` for the owner (f5d1694).
 - Tests: 164 pass, 1 skipped (needs ffmpeg), 2 model tests deselected.
 
+### 2026-11-12 — PLAN_3 Part B: owner review applied
+
+- **Decisions:** the owner re-tagged 3 of 5 "moving" GitHub clips as fixed (`video_test_5`, `aggie_NathanBBall`, `artur_vid29`) and kept `lf_alan` and `kyle_test_video` as moving. The owner confirmed all 4 unlabelled Enosburg pipeline makes as real makes (start/end = frame -48/+6).
+- **B2** (64d1fe8): camera tags and `camera_class_source` written to `labels.json`. Shots unchanged. Makes counted stayed 158/244, 0/85 + 5 spurious.
+- **B3** (998757a): 4 MAKE labels added to the Enosburg clip. Makes counted 162/248, 0/85 labelled misses scored MAKE, 1 spurious make.
+- **Final numbers:** in-scope (fixed/single) 55/60 makes (91.7%), 0/8 false makes, 95% upper bound 31.2%, NOT ENOUGH MISSES TO JUDGE (8 < 50), so 42 more in-scope misses are needed. Stress test 107/188 makes, 1/77 false makes.
+- **Live check (owner):** file clip `COMPARE: SAME`, 122.92 fps processing against 30.00 source. Webcam 29.23 fps processing against 15.00 reported, 1 phantom shot resolved MISS. Follow-up, not fixed: the webcam reports 15 fps but delivers about 29, and shot-logic timings use the reported fps. Measure the real frame rate on device sources.
+- **Source cast bug** (owner fix 0a5725d): the device index from config arrived as int and broke `FrameSource`; fixed before Part B.
+- Correction to the 2026-11-09 entry: ffmpeg is now installed, so the rotation test runs. Tests: 165 pass, 2 model tests deselected, 0 skipped.
+
 ---
 
 ## Tools used

@@ -125,6 +125,19 @@ Hoop movement evidence for the five GitHub clips tagged "moving" (and `lf_back` 
 | kyle_test_video.mp4 | 353 | 0.0000 | 1.49 | moving |
 | lf_back.mp4 | 1159 | 0.0000 | 0.18 | fixed |
 
+**Owner review results (PLAN_3 Part B, 2026-11-12).** The owner re-tagged three of the five "moving" clips as fixed (`video_test_5`, `aggie_NathanBBall`, `artur_vid29`: background stays still). `lf_alan` (perspective shifts) and `kyle_test_video` (camera moves) stay moving. The owner confirmed all four unlabelled Enosburg pipeline makes (f35060, f125017, f201606, f207518) as real makes, and they were added as labels with start/end set to frame -48/+6 to match that game's other MAKE labels. Nothing changed in scoring, so only the grouping and the labels moved.
+
+| camera class | makes counted/makes | make rate | false makes/misses | 95% UB |
+|---|---|---|---|---|
+| fixed/single | 55/60 | 91.7% | 0/8 | 31.2% |
+| fixed/multi | 0/0 | 0.0% | 0/0 | 100.0% |
+| moving/single | 54/102 | 52.9% | 0/60 | 4.9% |
+| moving/multi | 53/86 | 61.6% | 1/17 | 25.0% |
+
+All clips: 162/248 makes (65.3%), 0/85 labelled misses scored MAKE, 1 spurious make (Bandits practice). In-scope verdict: NOT ENOUGH MISSES TO JUDGE (8 < 50). Stress test: makes 107/188, false makes 1/77.
+
+Live check (owner, 2026-11-12): recorded clip `lf_shot_detection.mp4` gave `COMPARE: SAME`, 122.92 processing fps against 30.00 source fps. The laptop webcam ran at 29.23 processing fps against a reported 15.00 source fps (no ball in view; 1 phantom shot resolved MISS). Follow-up, not fixed: the webcam reported 15 fps but delivered about 29, and shot-logic timings use the reported fps, so live windows would be about half as long as intended.
+
 ---
 
 ## 1. Measured diagnosis
