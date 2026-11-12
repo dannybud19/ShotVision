@@ -135,7 +135,7 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
 
     processing_fps = frame_idx / wall if wall > 0 else 0.0
     return {
-        "source": config.camera.source,
+        "source": str(config.camera.source),
         "frames": frame_idx,
         "wall_seconds": wall,
         "fps_used_for_timing": fps,

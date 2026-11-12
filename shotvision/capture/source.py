@@ -26,6 +26,8 @@ def _classify_source(source: str) -> str:
 
 class FrameSource:
     def __init__(self, source: str, loop: bool = False):
+        # Config may coerce "0" to the int 0; device indices arrive either way.
+        source = str(source)
         self.source = source
         self.loop = loop
         self.type = _classify_source(source)
