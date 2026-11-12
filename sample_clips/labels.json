@@ -2512,6 +2512,12 @@
           "card": 3
         },
         {
+          "start": 35012,
+          "end": 35066,
+          "outcome": "MAKE",
+          "note": "added in PLAN_3 review by the owner: owner confirmed the ball went through; start/end set to frame -48/+6 to match this game's label lengths"
+        },
+        {
           "start": 36913,
           "end": 36979,
           "outcome": "MAKE",
@@ -2827,6 +2833,12 @@
           "card": 71
         },
         {
+          "start": 124969,
+          "end": 125023,
+          "outcome": "MAKE",
+          "note": "added in PLAN_3 review by the owner: owner confirmed the ball went through; start/end set to frame -48/+6 to match this game's label lengths"
+        },
+        {
           "start": 126586,
           "end": 126658,
           "outcome": "MISS",
@@ -2989,6 +3001,12 @@
           "card": 110
         },
         {
+          "start": 201558,
+          "end": 201612,
+          "outcome": "MAKE",
+          "note": "added in PLAN_3 review by the owner: owner confirmed the ball went through; start/end set to frame -48/+6 to match this game's label lengths"
+        },
+        {
           "start": 202838,
           "end": 202892,
           "outcome": "MAKE",
@@ -3001,6 +3019,12 @@
           "outcome": "IGNORE",
           "note": "ball rises from below net then drifts down along glass, unclear",
           "card": 114
+        },
+        {
+          "start": 207470,
+          "end": 207524,
+          "outcome": "MAKE",
+          "note": "added in PLAN_3 review by the owner: owner confirmed the ball went through; start/end set to frame -48/+6 to match this game's label lengths"
         },
         {
           "start": 208233,
