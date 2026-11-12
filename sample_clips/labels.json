@@ -139,7 +139,8 @@
     "video_test_5.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
-      "camera_class": "moving",
+      "camera_class": "fixed",
+      "camera_class_source": "manual 2026-11-12: owner reviewed: background stays still across the clip",
       "ball_count": "single",
       "camera_profile": {
         "frames": 3378,
@@ -535,6 +536,7 @@
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
       "camera_class": "moving",
+      "camera_class_source": "manual 2026-11-12: owner reviewed: perspective shifts during the clip, so not a single fixed camera (background stays in view)",
       "ball_count": "single",
       "camera_profile": {
         "frames": 658,
@@ -567,7 +569,8 @@
     "artur_vid29.mp4": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
-      "camera_class": "moving",
+      "camera_class": "fixed",
+      "camera_class_source": "manual 2026-11-12: owner reviewed: background stays still across the clip",
       "ball_count": "single",
       "camera_profile": {
         "frames": 884,
@@ -615,6 +618,7 @@
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
       "camera_class": "moving",
+      "camera_class_source": "manual 2026-11-12: owner reviewed: camera moves",
       "ball_count": "single",
       "camera_profile": {
         "frames": 353,
@@ -641,7 +645,8 @@
     "aggie_NathanBBall.mov": {
       "verified": "user-labeled via ShotVision Shot Labels page, 2026-11-03",
       "split": "dev",
-      "camera_class": "moving",
+      "camera_class": "fixed",
+      "camera_class_source": "manual 2026-11-12: owner reviewed: background stays still across the clip",
       "ball_count": "single",
       "camera_profile": {
         "frames": 806,
