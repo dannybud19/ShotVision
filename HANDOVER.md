@@ -208,8 +208,8 @@ The idea: take the last ball point above the rim and the first below, draw a str
 
 ## 10. Next actions (in order)
 
-1. **Run PLAN_4** (`docs/plans/PLAN_4_tidy_and_still_shots.md`) with Sonnet and the runner prompt. Tidy-up, live frame-rate fix, and a count of labelled shots filmed while a broadcast camera was still.
-2. **Rerun the webcam live check** after PLAN_4. Expect "measured about 30 fps".
+1. PLAN_4 done. Live webcam: measured 29.89 fps vs 15 reported, latency p95 15.3 ms; real-time verdict fixed in PLAN_5.
+2. PLAN_5 Part A done; owner marks release frames, then Part B.
 3. **Decide on still-camera shots.** If PLAN_4 step 5 finds many still-camera misses in the broadcast games, decide whether they fairly count towards the in-scope set (they are a fixed view, but a different angle and zoom from your own setup).
    - PLAN_4 step 5 result: `Still-camera misses outside fixed/single clips: 22 (false makes: 0)`; `If counted in scope: in-scope misses would be 8 + 22 = 30`. Of the 22, 9 are in the single-ball Hardwick games and 13 are in the multi-ball Bandits practices (`experiments/results/shot_camera_stillness.md`).
 4. **Get fixed-camera misses.** Public options are thin (13 Nov search): stock sites have short clips, mostly makes, with licences that don't clearly allow this use; Roboflow sets are single images, not video; research datasets (BASKET, PL-NBA) are broadcast highlights with unclear licences. **Own filming is the realistic route** and settles Gate B at the same time (spec in section 12). Borrowing a friend's phone and one 2-hour session is enough.

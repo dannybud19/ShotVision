@@ -474,3 +474,22 @@ That is 60 makes, 80 misses and 20 non-shots.
   - That the 4 never-armed traces would resolve MAKE once armed. Partly verified by the align/descent sweeps, which rescued f211, f1906 and lf_alan as MAKE.
   - That blur, not some other detector weakness, explains the vt5 gaps. Based on the 2026-11-03 frame review, not re-viewed this session.
 - **Valid conclusion check:** "No new model needed" holds *for now*. But the fix is not threshold tuning either. It is input quality (shutter and frame rate) and a miss set big enough to tune against safely.
+
+---
+
+## 5. Phase 2 groundwork (experiments)
+
+Experiments only: nothing in `shotvision/` uses them and nothing ships. Phase 1 is still waiting for fixed-camera misses.
+
+**Release moment from the ball's arc** (`experiments/release_moment.py`, PLAN_5 A2; no model). For each labelled shot it takes the tracker's followed ball over the window from 3.0 s before the label's start to its end, finds the apex above the rim, then walks back while one quadratic still fits (residual under 0.25 ball widths, curving the way gravity does, no gap over 0.25 s). The release frame is the earliest point still in the fit. Report only: no release frame has been checked against the footage yet (that is Part B). Full report: `experiments/results/release_moment.md`.
+
+| camera class | shots | got a release | no release | median flight (s) | p90 flight (s) | median tracked points in window |
+| --- | --- | --- | --- | --- | --- | --- |
+| fixed/single | 68 | 68 | 0 | 0.63 | 0.73 | 74 |
+| moving/single | 162 | 147 | 15 | 0.17 | 0.45 | 84 |
+| moving/multi | 103 | 97 | 6 | 0.00 | 0.52 | 127 |
+| **all** | 333 | 312 | 21 | 0.20 | 0.67 | 96 |
+
+All 21 failures are `no_apex` (no tracked point above the rim within 2.0 s before the last point near the hoop, or none near the hoop at all), all in moving-camera clips. The fit stopped on `residual` for 155 shots, `gap` for 94, `curvature` for 55 and `ran_out` for 8.
+
+**Court mapping** (`experiments/court_map.py`, PLAN_5 A4). `fit_homography` turns four or more clicked floor points with known court positions into a pixel-to-court mapping, and `is_three` says whether a court position is behind the FIBA or NBA three-point line (on the line counts as two). The maths is tested on made-up views; the owner has not yet tried it on a real frame.

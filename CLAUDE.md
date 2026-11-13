@@ -6,7 +6,9 @@
 - **Gate A (in scope: fixed camera, single ball):** 55/60 makes counted (91.7%), 0 false makes in 8 misses. The in-scope gate needs at least 50 misses, so it reports NOT ENOUGH MISSES TO JUDGE (8 < 50). `scripts/evaluate.py --report` splits by camera class, measured per clip by `experiments/camera_profile.py` and stored as `camera_class`/`ball_count` in `labels.json`. The owner reviewed the 5 "moving" GitHub clips on 2026-11-12 and re-tagged 3 as fixed (`camera_class_source` records it).
 - **Out of scope (stress test, no pass/fail):** 107/188 makes, 1 false make in 77 misses. The 1 is a spurious make in a Bandits practice. The 4 Enosburg spurious makes were confirmed real makes by the owner and labelled (PLAN_3 B3). All clips, old definition: 162/248 (65.3%), 0/85 labelled misses scored MAKE.
 - **Tracker fix (5 Nov) is done:** shot-centric ball selection took the dev set from 90 to 107/137 makes and 2 to 0 false makes; with Bandits 03: 132/193, 0/57 labeled misses scored MAKE, 1 spurious make.
+- **Phase 2 groundwork (experiments only):** experiments/release_moment.py (release frame from the ball's arc) and experiments/court_map.py (homography, is_three). Nothing in shotvision/ uses them.
 - **Next step:** get 50+ fixed-camera misses (licensed fixed-camera shooting footage or the owner's own filming, spec in HANDOVER.md section 12). Phase 2 groundwork (release moment) may start as experiments only.
+- **Owner, meanwhile:** mark release frames in docs/plans/PLAN_5_decisions.md, then PLAN_5 Part B.
 - **Proposed, needs agreement:** count still-camera shots from out-of-scope clips towards the in-scope misses (step 5 of PLAN_4 measured 22 of them). Owner decides.
 - **Labels:** the newer ones are Claude-made from contact sheets, not human-verified. Labeling pages: `python scripts/label_candidates.py <clip>`.
 - **Legacy clips** (11 GitHub clips): 56/63 distinct makes, 0/8 false makes. Public footage: `sample_clips/public/`, provenance and licenses in `sample_clips/SOURCES.md`.
@@ -20,8 +22,8 @@
 **Hardware:** Apple Silicon M2 Pro, PyTorch on MPS. **No CUDA.** Flag any CUDA-only dependency.
 
 **Tests:**
-- `.venv/bin/python -m pytest -q` runs 174 tests. Two of them load `models/basketball_best.pt` (`test_detector_loads_real_basketball_checkpoint_and_predicts`, `test_update_runs_end_to_end_on_blank_frame`).
-- To skip the model, add `--deselect tests/test_detector.py::test_detector_loads_real_basketball_checkpoint_and_predicts --deselect tests/test_ball_tracker.py::test_update_runs_end_to_end_on_blank_frame`. That leaves 172, all passing (0 skipped, ffmpeg installed) on 2026-11-13.
+- `.venv/bin/python -m pytest -q` runs 188 tests. Two of them load `models/basketball_best.pt` (`test_detector_loads_real_basketball_checkpoint_and_predicts`, `test_update_runs_end_to_end_on_blank_frame`).
+- To skip the model, add `--deselect tests/test_detector.py::test_detector_loads_real_basketball_checkpoint_and_predicts --deselect tests/test_ball_tracker.py::test_update_runs_end_to_end_on_blank_frame`. That leaves 186, all passing (0 skipped, ffmpeg installed) on 2026-11-13.
 
 **Measuring:**
 - `scripts/evaluate.py [-v] [--set key=value]` is the scoreboard. It replays cached detections from `experiments/.cache/detections`.
