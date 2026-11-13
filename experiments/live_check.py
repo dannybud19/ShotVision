@@ -67,6 +67,16 @@ def percentile(values: list[float], pct: float) -> float:
     return ordered[min(len(ordered) - 1, round(pct / 100 * (len(ordered) - 1)))]
 
 
+def is_real_time(source_type: str, fps_used: float, processing_fps: float, latency_p95_ms: float) -> tuple[bool, str]:
+    """Files: real time when processing fps >= the file's fps.
+    Live devices and URLs: frames can't be processed faster than they arrive,
+    so real time means each frame is analysed within one frame interval (p95)."""
+    if source_type == "file":
+        return processing_fps >= fps_used, "processing fps >= source fps"
+    budget_ms = 1000.0 / fps_used if fps_used > 0 else float("inf")
+    return latency_p95_ms < budget_ms, f"latency p95 {latency_p95_ms:.1f} ms < frame interval {budget_ms:.1f} ms"
+
+
 # ---------------------------------------------------------------------------
 # Live run (loads the model; only called from main())
 # ---------------------------------------------------------------------------
@@ -139,8 +149,11 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
             frame_idx += 1
         wall = time.perf_counter() - started
         reported_fps = source.fps
+        source_type = source.type
 
     processing_fps = frame_idx / wall if wall > 0 else 0.0
+    latency_p95 = percentile(latencies, 95)
+    real_time, real_time_rule = is_real_time(source_type, fps, processing_fps, latency_p95)
     return {
         "source": str(config.camera.source),
         "frames": frame_idx,
@@ -149,9 +162,10 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
         "source_fps": fps,
         "reported_fps": reported_fps,
         "processing_fps": processing_fps,
-        "real_time": processing_fps >= fps,
+        "real_time": real_time,
+        "real_time_rule": real_time_rule,
         "latency_ms_p50": statistics.median(latencies) if latencies else 0.0,
-        "latency_ms_p95": percentile(latencies, 95),
+        "latency_ms_p95": latency_p95,
         "shots": shots,
         "makes": sum(1 for s in shots if s["outcome"] == "MAKE"),
         "misses": sum(1 for s in shots if s["outcome"] == "MISS"),
@@ -166,7 +180,7 @@ def print_summary(summary: dict) -> None:
         reported = f" (reported {summary['reported_fps']:.2f})"
     print(f"source: {summary['source']}   source fps: {summary['source_fps']:.2f}{reported}   "
           f"processing fps: {summary['processing_fps']:.2f}   "
-          f"real time: {'YES' if summary['real_time'] else 'NO'} (processing fps >= source fps)")
+          f"real time: {'YES' if summary['real_time'] else 'NO'} ({summary['real_time_rule']})")
     print(f"latency ms p50: {summary['latency_ms_p50']:.1f}  p95: {summary['latency_ms_p95']:.1f}")
     print(f"shots: {len(summary['shots'])}  makes: {summary['makes']}  misses: {summary['misses']}")
 
