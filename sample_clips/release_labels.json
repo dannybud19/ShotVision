@@ -1,0 +1,145 @@
+{
+  "_doc": "Owner-marked release frames (PLAN_5). Frame = first frame the ball has fully left the hand(s).",
+  "shots": [
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 55,
+      "label_end": 82,
+      "release_frame": 43,
+      "note": ""
+    },
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 161,
+      "label_end": 195,
+      "release_frame": 148,
+      "note": ""
+    },
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 272,
+      "label_end": 303,
+      "release_frame": 261,
+      "note": ""
+    },
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 370,
+      "label_end": 413,
+      "release_frame": 359,
+      "note": ""
+    },
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 503,
+      "label_end": 532,
+      "release_frame": 491,
+      "note": ""
+    },
+    {
+      "clip": "lf_shot_detection.mp4",
+      "label_start": 600,
+      "label_end": 640,
+      "release_frame": 588,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 44,
+      "label_end": 75,
+      "release_frame": 33,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 140,
+      "label_end": 182,
+      "release_frame": 138,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 261,
+      "label_end": 297,
+      "release_frame": 251,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 359,
+      "label_end": 389,
+      "release_frame": 349,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 491,
+      "label_end": 525,
+      "release_frame": 482,
+      "note": ""
+    },
+    {
+      "clip": "lf_back.mp4",
+      "label_start": 588,
+      "label_end": 626,
+      "release_frame": 579,
+      "note": ""
+    },
+    {
+      "clip": "chonyy_two_score_three_miss.mp4",
+      "label_start": 55,
+      "label_end": 90,
+      "release_frame": 29,
+      "note": ""
+    },
+    {
+      "clip": "chonyy_two_score_three_miss.mp4",
+      "label_start": 150,
+      "label_end": 195,
+      "release_frame": 133,
+      "note": ""
+    },
+    {
+      "clip": "chonyy_two_score_three_miss.mp4",
+      "label_start": 262,
+      "label_end": 292,
+      "release_frame": 242,
+      "note": ""
+    },
+    {
+      "clip": "chonyy_two_score_three_miss.mp4",
+      "label_start": 362,
+      "label_end": 390,
+      "release_frame": 343,
+      "note": ""
+    },
+    {
+      "clip": "chonyy_two_score_three_miss.mp4",
+      "label_start": 460,
+      "label_end": 486,
+      "release_frame": 443,
+      "note": ""
+    },
+    {
+      "clip": "aggie_NathanBBall.mov",
+      "label_start": 66,
+      "label_end": 117,
+      "release_frame": 48,
+      "note": ""
+    },
+    {
+      "clip": "aggie_NathanBBall.mov",
+      "label_start": 205,
+      "label_end": 239,
+      "release_frame": 186,
+      "note": ""
+    },
+    {
+      "clip": "aggie_NathanBBall.mov",
+      "label_start": 308,
+      "label_end": 351,
+      "release_frame": 289,
+      "note": ""
+    }
+  ]
+}

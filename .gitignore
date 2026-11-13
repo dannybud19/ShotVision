@@ -13,3 +13,4 @@ experiments/.cache/
 experiments/results/*.txt
 experiments/results/*.json
 !sample_clips/labels.json
+!sample_clips/release_labels.json
