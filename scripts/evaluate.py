@@ -387,7 +387,13 @@ def print_gate_report(
                     by_group[g][1] += 1
                     by_class[ck][1] += 1
                 else:
-                    reasons["make lost: " + (c.result.reason.value if c.result else "never armed")] += 1
+                    if c.result is None:
+                        why = "never armed"
+                    elif c.result.reason is None:
+                        why = "no reason recorded"
+                    else:
+                        why = c.result.reason.value
+                    reasons["make lost: " + why] += 1
             else:
                 misses += 1
                 t = c.label.get("miss_type") or "untyped"

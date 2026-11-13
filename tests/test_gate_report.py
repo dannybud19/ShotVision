@@ -100,3 +100,13 @@ def test_low_make_rate_fails_even_with_few_misses(capsys):
     result, out = _in_scope_report(checks, capsys)
     assert result is False
     assert _IN_SCOPE_LINE + "FAIL" in out
+
+
+def test_lost_make_without_reason_does_not_crash(capsys):
+    check = evaluate.ShotCheck(
+        label={"outcome": "MAKE", "start": 0, "end": 10},
+        result=ShotResult(outcome=ShotOutcome.MISS, frame_idx=0),  # no reason passed
+    )
+    clip = evaluate.ClipScore(clip="fixed_one", checks=[check], spurious=[])
+    evaluate.print_gate_report([clip], _IN_SCOPE_META, min_misses=0)
+    assert "make lost: no reason recorded" in capsys.readouterr().out
