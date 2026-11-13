@@ -49,7 +49,7 @@ class FrameSource:
 
         # Phones store portrait video as landscape pixels plus a rotation flag.
         # Ask OpenCV to apply the flag so the pipeline always sees the picture upright.
-        if self.type != DEVICE and hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO") and hasattr(self._cap, "set"):
+        if self.type != DEVICE and hasattr(cv2, "CAP_PROP_ORIENTATION_AUTO"):
             self._cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
 
     @property

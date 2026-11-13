@@ -96,6 +96,9 @@ def test_source_key_distinguishes_device_and_url(monkeypatch):
         def get(self, prop):
             return 30.0
 
+        def set(self, prop, value):
+            return True
+
         def release(self):
             pass
 
