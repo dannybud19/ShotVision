@@ -143,3 +143,34 @@ def test_rotated_clip_is_read_upright(tmp_path):
     with FrameSource(str(rotated)) as src:
         assert src.rotation in (90, 270)
         assert src.read().shape == (64, 48, 3)  # portrait
+
+
+def test_measure_fps_uses_delivered_rate(tmp_path):
+    clip_path = tmp_path / "clip.mp4"
+    _write_test_clip(clip_path, num_frames=3, fps=10)
+    src = FrameSource(str(clip_path))
+    try:
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        now = [0.0]
+
+        def fake_read():
+            now[0] += 1 / 30  # a camera delivering 30 frames per second
+            return frame
+
+        src.read = fake_read
+        measured = src.measure_fps(seconds=1.0, clock=lambda: now[0])
+        assert measured == pytest.approx(30.0, abs=1.0)
+        assert src.fps == pytest.approx(10.0, abs=1.0)  # the reported rate is not what was returned
+    finally:
+        src.release()
+
+
+def test_measure_fps_falls_back_when_no_frames(tmp_path):
+    clip_path = tmp_path / "clip.mp4"
+    _write_test_clip(clip_path, num_frames=3, fps=10)
+    src = FrameSource(str(clip_path))
+    try:
+        src.read = lambda: None
+        assert src.measure_fps(seconds=1.0, clock=lambda: 0.0) == src.fps
+    finally:
+        src.release()

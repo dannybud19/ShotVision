@@ -6,6 +6,7 @@ only `source` (a config value) changes.
 """
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import cv2
@@ -60,6 +61,22 @@ class FrameSource:
     def fps(self) -> float:
         fps = self._cap.get(cv2.CAP_PROP_FPS)
         return fps if fps and fps > 0 else 30.0
+
+    def measure_fps(self, seconds: float = 2.0, clock=time.monotonic) -> float:
+        """Read and discard frames for about `seconds` and return the real
+        delivery rate. For live devices, whose reported CAP_PROP_FPS can be
+        wrong. The first frame is not counted (cameras often stall on start)."""
+        first = self.read()
+        if first is None:
+            return self.fps
+        start = clock()
+        frames = 0
+        while clock() - start < seconds:
+            if self.read() is None:
+                break
+            frames += 1
+        elapsed = clock() - start
+        return frames / elapsed if frames > 0 and elapsed > 0 else self.fps
 
     @property
     def rotation(self) -> int:

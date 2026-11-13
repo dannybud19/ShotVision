@@ -68,7 +68,13 @@ def run(config: Config, loop: bool = False) -> None:
 
     with FrameSource(config.camera.source, loop=loop) as source:
         # Thresholds are in seconds; convert them at the source's real rate.
-        fps = config.camera.fps or source.fps
+        if config.camera.fps:
+            fps = config.camera.fps
+        elif source.type == "device":
+            fps = source.measure_fps()
+            print(f"[ShotVision] Camera reports {source.fps:.2f} fps, measured {fps:.2f} fps; using measured.")
+        else:
+            fps = source.fps
         print(f"[ShotVision] Timing at {fps:.2f} fps.")
         ball_tracker = BallTracker(
             detector, config.tracker, to_frames(config.shot_logic.trajectory_buffer_s, fps), fps=fps

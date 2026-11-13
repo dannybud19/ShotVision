@@ -89,7 +89,14 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
     shots, results, latencies = [], [], []
 
     with FrameSource(config.camera.source, loop=loop) as source:
-        fps = config.camera.fps or source.fps
+        if config.camera.fps:
+            fps = config.camera.fps
+        elif source.type == "device":
+            fps = source.measure_fps()
+            print(f"[ShotVision] Camera reports {source.fps:.2f} fps, measured {fps:.2f} fps; using measured.")
+        else:
+            fps = source.fps
+        print(f"[ShotVision] Timing at {fps:.2f} fps.")
         ball_tracker = BallTracker(
             detector, config.tracker, to_frames(config.shot_logic.trajectory_buffer_s, fps), fps=fps
         )
@@ -131,7 +138,7 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
             latencies.append((time.perf_counter() - t0) * 1000)
             frame_idx += 1
         wall = time.perf_counter() - started
-        source_fps = source.fps
+        reported_fps = source.fps
 
     processing_fps = frame_idx / wall if wall > 0 else 0.0
     return {
@@ -139,9 +146,10 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
         "frames": frame_idx,
         "wall_seconds": wall,
         "fps_used_for_timing": fps,
-        "source_fps": source_fps,
+        "source_fps": fps,
+        "reported_fps": reported_fps,
         "processing_fps": processing_fps,
-        "real_time": processing_fps >= source_fps,
+        "real_time": processing_fps >= fps,
         "latency_ms_p50": statistics.median(latencies) if latencies else 0.0,
         "latency_ms_p95": percentile(latencies, 95),
         "shots": shots,
@@ -153,7 +161,10 @@ def run_live(config, seconds: float | None, loop: bool = False) -> dict:
 
 def print_summary(summary: dict) -> None:
     print("\n=== Live check ===")
-    print(f"source: {summary['source']}   source fps: {summary['source_fps']:.2f}   "
+    reported = ""
+    if abs(summary["reported_fps"] - summary["source_fps"]) > 0.5:
+        reported = f" (reported {summary['reported_fps']:.2f})"
+    print(f"source: {summary['source']}   source fps: {summary['source_fps']:.2f}{reported}   "
           f"processing fps: {summary['processing_fps']:.2f}   "
           f"real time: {'YES' if summary['real_time'] else 'NO'} (processing fps >= source fps)")
     print(f"latency ms p50: {summary['latency_ms_p50']:.1f}  p95: {summary['latency_ms_p95']:.1f}")
