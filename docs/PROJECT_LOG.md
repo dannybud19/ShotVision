@@ -181,6 +181,13 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **A6:** docs (this commit).
 - Nothing under `shotvision/` changed. Scoreboard unchanged.
 
+### 2026-11-13: PLAN_5 Part B: release finder measured
+
+- **B0:** owner's 20 release frames checked (all integers, no `CANT_TELL`). 191 tests, report identical to `plan5_gate_a_before.txt`.
+- **B1** (29de7f8): `sample_clips/release_labels.json` written from the owner's decisions. `.gitignore` gained `!sample_clips/release_labels.json` next to the `labels.json` exception (owner-approved). New `experiments/release_error.py` and `tests/test_release_error.py`. `labels.json` untouched.
+- **Result:** 20 shots scored. Median absolute error 4.0 frames (133 ms), p90 5.0 (167 ms), signed mean -2.75 frames. Within ±2 frames: 2/20 (10%). Within ±5: 20/20. Early on 15, late on 4, exact on 1.
+- Finder not changed. Nothing under `shotvision/` changed. Scoreboard unchanged. 197 tests.
+
 ---
 
 ## Tools used

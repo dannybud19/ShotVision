@@ -493,3 +493,18 @@ Experiments only: nothing in `shotvision/` uses them and nothing ships. Phase 1 
 All 21 failures are `no_apex` (no tracked point above the rim within 2.0 s before the last point near the hoop, or none near the hoop at all), all in moving-camera clips. The fit stopped on `residual` for 155 shots, `gap` for 94, `curvature` for 55 and `ran_out` for 8.
 
 **Court mapping** (`experiments/court_map.py`, PLAN_5 A4). `fit_homography` turns four or more clicked floor points with known court positions into a pixel-to-court mapping, and `is_three` says whether a court position is behind the FIBA or NBA three-point line (on the line counts as two). The maths is tested on made-up views; the owner has not yet tried it on a real frame.
+
+**Release finder error against the owner's marks** (`experiments/release_error.py`, PLAN_5 B1; `sample_clips/release_labels.json`). The owner marked the first frame the ball fully left the hand(s) on 20 `fixed/single` shots (6 `lf_shot_detection`, 6 `lf_back`, 5 `chonyy_two_score_three_miss`, 3 `aggie_NathanBBall`; no `CANT_TELL`). Error is the finder's frame minus the owner's, so negative means early. Full report: `experiments/results/release_error.md`.
+
+| measure | frames | ms |
+| --- | --- | --- |
+| median absolute error | 4.0 | 133 |
+| p90 absolute error | 5.0 | 167 |
+| signed mean (early < 0 < late) | -2.75 | -92 |
+
+| within | shots | share |
+| --- | --- | --- |
+| ±2 frames | 2/20 | 10% |
+| ±5 frames | 20/20 | 100% |
+
+The ball-arc release finder is not within ±2 frames on most shots (2 of 20, 10%), but it is within ±5 frames on all 20 (median 4 frames, 133 ms) and it is early on 15 of 20 (late on 4, exact on 1).
