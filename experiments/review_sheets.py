@@ -49,6 +49,8 @@ FULL_WIDTH = 1280
 LABEL_RANGE_S = 10.0
 HEADER_NOTE = "pipeline: spurious MAKE"
 DEFAULT_OUT = REPO_ROOT / "sample_clips" / "_review"
+RELEASE_JSON = REPO_ROOT / "experiments" / "results" / "release_moment.json"
+RELEASE_CROP_WIDTHS = 6  # --center-on-release: crop side, in hoop widths
 PLOT_W, PLOT_H = 1200, 360
 SHEET_W = 1600
 SPREAD_FRAMES = 8
@@ -88,6 +90,26 @@ def crop_box(hoop_boxes: list[tuple], frame_shape: tuple) -> tuple[int, int, int
     x1 = min(max(0, round(cx - cw / 2)), w - cw)
     y1 = min(max(0, round(cy - ch / 2)), h - ch)
     return x1, y1, x1 + cw, y1 + ch
+
+
+def release_crop_box(center: tuple, hoop_width: float, frame_shape: tuple,
+                     widths: float = RELEASE_CROP_WIDTHS) -> tuple[int, int, int, int]:
+    """Square crop `widths` x the hoop width on a side, centred on `center` (x, y).
+    The box is moved (not shrunk) to stay inside the image; it only shrinks when
+    the image itself is smaller than the box."""
+    h, w = int(frame_shape[0]), int(frame_shape[1])
+    size = min(w, h, max(1, round(widths * hoop_width)))
+    x1 = min(max(0, round(center[0] - size / 2)), w - size)
+    y1 = min(max(0, round(center[1] - size / 2)), h - size)
+    return x1, y1, x1 + size, y1 + size
+
+
+def find_release_record(records: list[dict], clip: str, frame: int) -> dict | None:
+    """The release_moment.json record for `clip` whose estimated release frame is `frame`."""
+    for rec in records:
+        if rec.get("clip") == clip and rec.get("release_frame") == frame:
+            return rec
+    return None
 
 
 def best_hoop(dets: list, conf: float = HOOP_CONF):
@@ -261,13 +283,26 @@ def run_frames(args: argparse.Namespace) -> int:
     stem = Path(args.clip).stem
     targets = []
 
+    release_records = None
+    if args.center_on_release:
+        if not RELEASE_JSON.exists():
+            sys.exit(f"{RELEASE_JSON} not found; run experiments/release_moment.py first")
+        release_records = json.loads(RELEASE_JSON.read_text())
+
     for t in args.frames:
         window = [f for f in window_frames(t, fps, args.before, args.after, args.step) if 0 <= f < min(total, len(dets))]
         images = read_frames(path, window + [t], fps, total)
         if t not in images or not all(f in images for f in window):
             sys.exit(f"could not read every frame for target f{t} from {path.name}")
-        hoop_boxes = [b.bbox for f in window if (b := best_hoop(dets[f])) is not None]
-        x1, y1, x2, y2 = crop_box(hoop_boxes, images[t].shape)
+        if release_records is not None:
+            rec = find_release_record(release_records, args.clip, t)
+            if rec is None or not rec.get("release_xy") or not rec.get("rim"):
+                sys.exit(f"no release estimate for {args.clip} at f{t} in {RELEASE_JSON.name}")
+            # One fixed crop for the whole window (it does not follow the ball).
+            x1, y1, x2, y2 = release_crop_box(rec["release_xy"], rec["rim"][2], images[t].shape)
+        else:
+            hoop_boxes = [b.bbox for f in window if (b := best_hoop(dets[f])) is not None]
+            x1, y1, x2, y2 = crop_box(hoop_boxes, images[t].shape)
         tiles = []
         for f in window:
             img = images[f].copy()
@@ -428,6 +463,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     f.add_argument("--after", type=float, default=0.5, help="seconds after the target")
     f.add_argument("--step", type=float, default=0.1, help="seconds between tiles")
     f.add_argument("--label", default=HEADER_NOTE, help="header text in place of the default note")
+    f.add_argument("--center-on-release", action="store_true",
+                   help="crop (6 hoop widths square, fixed for the window) centred on the estimated release "
+                        "position from experiments/results/release_moment.json; each --frames value must be "
+                        "an estimated release frame of --clip")
     f.add_argument("--out", default=str(DEFAULT_OUT))
     f.set_defaults(func=run_frames)
     c = sub.add_parser("camera", help="hoop track plot, spread frames and jump frames per clip")

@@ -11,7 +11,9 @@ from experiments.review_sheets import (
     build_header_text,
     camera_stats,
     crop_box,
+    find_release_record,
     parse_args,
+    release_crop_box,
     spread_indices,
     window_frames,
 )
@@ -99,3 +101,35 @@ def test_frames_header_uses_the_default_note_unless_label_is_given():
     text = build_header_text("x", 100, custom_args.label, 90, 110)
     assert text == "x  target f100  release candidate  window f90-f110"
     assert "spurious MAKE" not in text
+
+
+def test_release_crop_is_a_six_hoop_width_square_centred_on_the_release():
+    box = release_crop_box((500.0, 400.0), 50.0, (720, 1280, 3))
+    assert box == (350, 250, 650, 550)  # 300 px = 6 x 50, centred on (500, 400)
+
+
+def test_release_crop_moves_rather_than_shrinks_at_the_image_edges():
+    assert release_crop_box((20.0, 30.0), 50.0, (720, 1280, 3)) == (0, 0, 300, 300)
+    assert release_crop_box((1270.0, 710.0), 50.0, (720, 1280, 3)) == (980, 420, 1280, 720)
+
+
+def test_release_crop_shrinks_only_when_the_image_is_smaller_than_the_box():
+    x1, y1, x2, y2 = release_crop_box((100.0, 100.0), 50.0, (200, 400, 3))
+    assert (x2 - x1, y2 - y1) == (200, 200)
+    assert 0 <= x1 and x2 <= 400 and y1 == 0 and y2 == 200
+
+
+def test_find_release_record_matches_clip_and_estimated_release_frame():
+    records = [
+        {"clip": "a.mp4", "release_frame": 45, "release_xy": [1, 2]},
+        {"clip": "b.mp4", "release_frame": 45, "release_xy": [3, 4]},
+        {"clip": "a.mp4", "release_frame": None, "reason": "no_apex"},
+    ]
+    assert find_release_record(records, "b.mp4", 45)["release_xy"] == [3, 4]
+    assert find_release_record(records, "a.mp4", 46) is None
+
+
+def test_center_on_release_is_off_by_default():
+    base = ["frames", "--clip", "x.mp4", "--frames", "100"]
+    assert parse_args(base).center_on_release is False
+    assert parse_args(base + ["--center-on-release"]).center_on_release is True

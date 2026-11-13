@@ -120,3 +120,45 @@ Files changed: new `docs/plans/PLAN_5_decisions.md`.
   - Expected: tests pass | Got: `186 passed, 2 deselected` | Match: yes
 
 Files changed: `docs/PROJECT_LOG.md`, `docs/tracking-research.md`, `CLAUDE.md`, `HANDOVER.md`, this run log.
+
+## A3 follow-up (owner-approved): `--center-on-release` sheets
+
+Why: the A3 sheets were hoop-centred crops, so the shooter was mostly outside the picture and the owner could not read the release frame. The owner approved a shooter-centred crop (a new optional argument beyond the A3 `--label` exception).
+
+- `experiments/review_sheets.py frames --center-on-release` (default off, so the default behaviour is unchanged). The crop is a square of 6 hoop widths on a side, centred on the estimated release position (`release_xy`) from `experiments/results/release_moment.json`, fixed for the whole window (it does not follow the ball), moved (not shrunk) to stay inside the image. Hoop width comes from the record's `rim`. Each `--frames` value must be an estimated release frame of `--clip`, otherwise the script exits with a message. New pure functions: `release_crop_box`, `find_release_record`. Window, tile numbering and the `_full.jpg` are unchanged.
+- Tests (5 added to `tests/test_review_sheets.py`): crop centring, moved-not-shrunk at the edges, shrinks only when the image is smaller than the box, record lookup, flag off by default.
+  - Expected: tests pass | Got: `191 passed, 2 deselected` (186 + 5) | Match: yes
+- Rebuilt all 20 sheets into `sample_clips/_review/release/`, overwriting the old ones (the owner approved the overwrite). Same 20 commands as A3.3 plus `--center-on-release`; same shots, same estimates, decisions file untouched. Exit 0, no Ultralytics/torch/loading output. 20 `.png` all newer than the rebuild, 0 older, 44 files in the folder as before.
+  - Looked at `lf_back_f29.png` (tiles f5 to f53) and `chonyy_two_score_three_miss_f24.png` (tiles f0 to f48, window clamped at frame 0): frame numbers consecutive, the shooter is in view in every tile, the ball box appears and moves across the tiles. In the chonyy sheet the ball leaves the top of the fixed crop a few frames after the estimate. No verdicts on where the release is.
+- Slip in my checks: my first file-count commands used `ls --time-style` and a `find -newermt` form this system does not support, so those counts were meaningless; redone with `find -mmin`.
+
+### Finding for the owner: distance of each estimated release point from the hoop
+
+From `release_rim_units` (x, y offset from the hoop centre in hoop widths); distance is the straight-line distance. Flag = within 1.5 hoop widths.
+
+| # | Clip | Est. release | Rim units (x, y) | Distance (hoop widths) | Within 1.5 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | lf_shot_detection.mp4 | 45 | (-6.10, 0.32) | 6.11 | no |
+| 2 | lf_shot_detection.mp4 | 151 | (-5.94, 0.13) | 5.95 | no |
+| 3 | lf_shot_detection.mp4 | 258 | (-7.41, 2.08) | 7.70 | no |
+| 4 | lf_shot_detection.mp4 | 356 | (-7.32, 2.09) | 7.61 | no |
+| 5 | lf_shot_detection.mp4 | 494 | (-5.80, 0.28) | 5.80 | no |
+| 6 | lf_shot_detection.mp4 | 591 | (-6.10, 0.25) | 6.10 | no |
+| 7 | lf_back.mp4 | 29 | (-5.87, 3.23) | 6.70 | no |
+| 8 | lf_back.mp4 | 135 | (-5.86, 3.19) | 6.67 | no |
+| 9 | lf_back.mp4 | 247 | (-5.87, 3.36) | 6.77 | no |
+| 10 | lf_back.mp4 | 345 | (-5.81, 3.29) | 6.68 | no |
+| 11 | lf_back.mp4 | 477 | (-5.34, 3.48) | 6.38 | no |
+| 12 | lf_back.mp4 | 574 | (-6.00, 3.36) | 6.87 | no |
+| 13 | chonyy_two_score_three_miss.mp4 | 24 | (-10.47, 1.61) | 10.59 | no |
+| 14 | chonyy_two_score_three_miss.mp4 | 128 | (-9.85, 1.75) | 10.01 | no |
+| 15 | chonyy_two_score_three_miss.mp4 | 237 | (-10.00, 1.66) | 10.14 | no |
+| 16 | chonyy_two_score_three_miss.mp4 | 338 | (-10.06, 1.74) | 10.21 | no |
+| 17 | chonyy_two_score_three_miss.mp4 | 438 | (-9.57, 1.78) | 9.73 | no |
+| 18 | aggie_NathanBBall.mov | 43 | (-8.75, 2.31) | 9.04 | no |
+| 19 | aggie_NathanBBall.mov | 181 | (-9.16, 2.26) | 9.44 | no |
+| 20 | aggie_NathanBBall.mov | 289 | (-7.97, 0.89) | 8.02 | no |
+
+None of the 20 estimates is within 1.5 hoop widths of the hoop. All are 5.80 to 10.59 hoop widths away, all to the left of the hoop (x between -10.47 and -5.34). So no estimate sits at the rim.
+
+Files changed: `experiments/review_sheets.py`, `tests/test_review_sheets.py`, this run log. Not pushed.
