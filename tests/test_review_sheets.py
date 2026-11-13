@@ -6,7 +6,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from experiments.review_sheets import camera_stats, crop_box, spread_indices, window_frames
+from experiments.review_sheets import (
+    HEADER_NOTE,
+    build_header_text,
+    camera_stats,
+    crop_box,
+    parse_args,
+    spread_indices,
+    window_frames,
+)
 
 
 @dataclass
@@ -79,3 +87,15 @@ def test_spread_indices_cover_the_clip():
     idx = spread_indices(1000)
     assert len(idx) == 8
     assert idx[0] == 0 and idx[-1] == 999
+
+
+def test_frames_header_uses_the_default_note_unless_label_is_given():
+    base = ["frames", "--clip", "x.mp4", "--frames", "100"]
+    default_args = parse_args(base)
+    assert default_args.label == HEADER_NOTE == "pipeline: spurious MAKE"
+    assert "pipeline: spurious MAKE" in build_header_text("x", 100, default_args.label, 90, 110)
+
+    custom_args = parse_args(base + ["--label", "release candidate"])
+    text = build_header_text("x", 100, custom_args.label, 90, 110)
+    assert text == "x  target f100  release candidate  window f90-f110"
+    assert "spurious MAKE" not in text

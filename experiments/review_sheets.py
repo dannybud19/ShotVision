@@ -215,6 +215,10 @@ def tile_grid(tiles: list[np.ndarray], per_row: int) -> np.ndarray:
     return np.vstack(rows)
 
 
+def build_header_text(stem: str, target: int, note: str, first: int, last: int) -> str:
+    return f"{stem}  target f{target}  {note}  window f{first}-f{last}"
+
+
 def header_strip(width: int, text: str) -> np.ndarray:
     strip = np.zeros((HEADER_HEIGHT, width, 3), np.uint8)
     cv2.putText(strip, text, (8, 27), cv2.FONT_HERSHEY_SIMPLEX, 0.7, WHITE, 2, cv2.LINE_AA)
@@ -272,7 +276,7 @@ def run_frames(args: argparse.Namespace) -> int:
             draw_text_box(tile, f"f{f}", (0, 0), 0.5, 1)
             tiles.append(tile)
         head = header_strip(TILE_WIDTH * TILES_PER_ROW,
-                            f"{stem}  target f{t}  {HEADER_NOTE}  window f{window[0]}-f{window[-1]}")
+                            build_header_text(stem, t, args.label, window[0], window[-1]))
         sheet = np.vstack([head, tile_grid(tiles, TILES_PER_ROW)])
         sheet_path = out_dir / f"{stem}_f{t}.png"
         cv2.imwrite(str(sheet_path), sheet)
@@ -423,6 +427,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     f.add_argument("--before", type=float, default=1.5, help="seconds before the target")
     f.add_argument("--after", type=float, default=0.5, help="seconds after the target")
     f.add_argument("--step", type=float, default=0.1, help="seconds between tiles")
+    f.add_argument("--label", default=HEADER_NOTE, help="header text in place of the default note")
     f.add_argument("--out", default=str(DEFAULT_OUT))
     f.set_defaults(func=run_frames)
     c = sub.add_parser("camera", help="hoop track plot, spread frames and jump frames per clip")
