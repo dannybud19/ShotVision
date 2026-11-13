@@ -43,10 +43,10 @@ A single fixed camera watches you shoot and counts makes and misses automaticall
 
 | Item | State |
 | --- | --- |
-| Main folder | `~/Desktop/ShotVision`, branch `stage1/label-tooling` at `c2e1916` (PLAN_3 done), pushed |
+| Main folder | `~/Desktop/ShotVision`, branch `stage1/label-tooling`, PLAN_3 done at `c2e1916`, PLAN_4 steps 1 to 5 on top (`f85ff61` to `d9b7a1c`) plus its docs commit, pushed |
 | `exp/line-crossing` | Merged into `stage1/label-tooling` (PLAN_3 A1). Worktree removed, branch kept |
 | `main` | Has PR #1 only (the ByteTrack replacement) |
-| Tests | 165 passed, 2 deselected (they load the model), 0 skipped (ffmpeg installed) |
+| Tests | 172 passed, 2 deselected (they load the model), 0 skipped (ffmpeg installed) |
 | Model | `models/basketball_best.pt` (from avishah3, no licence). Loading it needs the owner's approval. All evaluation replays cached detections in `experiments/.cache/detections/*.fd4cd3dc7f.pkl` |
 
 Commits since the 9 Nov handover, oldest first:
@@ -211,6 +211,7 @@ The idea: take the last ball point above the rim and the first below, draw a str
 1. **Run PLAN_4** (`docs/plans/PLAN_4_tidy_and_still_shots.md`) with Sonnet and the runner prompt. Tidy-up, live frame-rate fix, and a count of labelled shots filmed while a broadcast camera was still.
 2. **Rerun the webcam live check** after PLAN_4. Expect "measured about 30 fps".
 3. **Decide on still-camera shots.** If PLAN_4 step 5 finds many still-camera misses in the broadcast games, decide whether they fairly count towards the in-scope set (they are a fixed view, but a different angle and zoom from your own setup).
+   - PLAN_4 step 5 result: `Still-camera misses outside fixed/single clips: 22 (false makes: 0)`; `If counted in scope: in-scope misses would be 8 + 22 = 30`. Of the 22, 9 are in the single-ball Hardwick games and 13 are in the multi-ball Bandits practices (`experiments/results/shot_camera_stillness.md`).
 4. **Get fixed-camera misses.** Public options are thin (13 Nov search): stock sites have short clips, mostly makes, with licences that don't clearly allow this use; Roboflow sets are single images, not video; research datasets (BASKET, PL-NBA) are broadcast highlights with unclear licences. **Own filming is the realistic route** and settles Gate B at the same time (spec in section 12). Borrowing a friend's phone and one 2-hour session is enough.
 5. Only then: ideas for catching more makes when the ball is invisible at the rim, all keeping ShotVision's strict checks (net movement, a short look-ahead, hoop lock for a fixed camera, fine-tuning on blurred balls).
 

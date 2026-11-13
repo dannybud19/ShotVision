@@ -160,6 +160,16 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **Source cast bug** (owner fix 0a5725d): the device index from config arrived as int and broke `FrameSource`; fixed before Part B.
 - Correction to the 2026-11-09 entry: ffmpeg is now installed, so the rotation test runs. Tests: 165 pass, 2 model tests deselected, 0 skipped.
 
+### 2026-11-13: PLAN_4: tidy-up, live frame rate, still-camera shot count
+
+- **Step 1** (f85ff61): committed PLAN_4 and the ShotVision `HANDOVER.md`. Baseline matched: 165 tests, 162/248 makes, 0/85 + 1 spurious, in-scope 55/60 and 0/8.
+- **Step 2** (2b3ce1d): `evaluate --report` no longer crashes when a lost make has no reason (prints `make lost: no reason recorded`). Report identical. 166 tests.
+- **Step 3** (cd94818): removed the test-only `hasattr(self._cap, "set")` guard from `FrameSource`; `FakeCap` gets `set()`.
+- **Step 4** (cea20f7): `FrameSource.measure_fps` (2 s, first frame not counted). `main.py` and `experiments/live_check.py` use it for device sources and print `Camera reports ... fps, measured ... fps; using measured.` Report identical. 168 tests. Not run live; the owner reruns the webcam check.
+- **Step 5** (d9b7a1c): new `experiments/shot_camera_stillness.py` (report only, cached detections). Headline: `Still-camera misses outside fixed/single clips: 22 (false makes: 0)`; `If counted in scope: in-scope misses would be 8 + 22 = 30`. 119/248 makes and 30/85 misses were taken while the camera was still. 6 of 68 fixed/single shots are not still. 172 tests.
+- **Step 6:** docs (this commit): `HANDOVER.md`, `CLAUDE.md`, this entry, `docs/tracking-research.md` section 0f, run log.
+- Scoreboard unchanged: 162/248 makes, 0/85 labelled misses scored MAKE, 1 spurious make.
+
 ---
 
 ## Tools used

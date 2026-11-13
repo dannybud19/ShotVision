@@ -138,6 +138,53 @@ All clips: 162/248 makes (65.3%), 0/85 labelled misses scored MAKE, 1 spurious m
 
 Live check (owner, 2026-11-12): recorded clip `lf_shot_detection.mp4` gave `COMPARE: SAME`, 122.92 processing fps against 30.00 source fps. The laptop webcam ran at 29.23 processing fps against a reported 15.00 source fps (no ball in view; 1 phantom shot resolved MISS). Follow-up, not fixed: the webcam reported 15 fps but delivered about 29, and shot-logic timings use the reported fps, so live windows would be about half as long as intended.
 
+### 0f. Still-camera shots inside moving-camera clips (2026-11-13)
+
+PLAN_4 step 5 (`experiments/shot_camera_stillness.py`, report only, cached detections). For every labelled MAKE or MISS it measured the camera in the window from 1.0 s before the label's start to 0.5 s after its end, with the clip-level hoop measures and thresholds applied to that window (`hoop_seen >= 0.8`, `move_p95 < 0.5`, `size_ratio < 1.3`). It changes no tag, label or gate. Full results with the list of every still miss: `experiments/results/shot_camera_stillness.md`.
+
+**Table A: shots taken while the camera was still, by the clip's camera class**
+
+| camera class | makes still / total | misses still / total |
+| --- | --- | --- |
+| fixed/single | 54/60 | 8/8 |
+| moving/single | 8/102 | 9/60 |
+| moving/multi | 57/86 | 13/17 |
+| **all** | 119/248 | 30/85 |
+
+**Table B: still shots only, by clip**
+
+| clip | camera class | still makes counted / still makes | false makes / still misses |
+| --- | --- | --- | --- |
+| aggie_NathanBBall.mov | fixed/single | 4/4 | 0/1 |
+| artur_vid29.mp4 | fixed/single | 2/2 | 0/1 |
+| chonyy_one_score_one_miss.mp4 | fixed/single | 1/1 | 0/1 |
+| chonyy_sample_video.mp4 | fixed/single | 1/1 | 0/0 |
+| chonyy_two_score_three_miss.mp4 | fixed/single | 2/2 | 0/3 |
+| kyle_test_video.mp4 | moving/single | 0/1 | 0/0 |
+| lf_alan.mp4 | moving/single | 1/2 | 0/0 |
+| lf_back.mp4 | fixed/single | 9/9 | 0/1 |
+| lf_shot_detection.mp4 | fixed/single | 8/9 | 0/1 |
+| public/commons_bandits/bandits_practice_02.webm | moving/multi | 26/28 | 0/6 |
+| public/commons_bandits/bandits_practice_03.webm | moving/multi | 19/29 | 0/7 |
+| public/commons_hardwick/hazen_girls_v_enosburg_2025-12-12.webm | moving/single | 2/3 | 0/4 |
+| public/commons_hardwick/hazen_girls_v_lyndon_2026-02-04.webm | moving/single | 2/2 | 0/5 |
+| video_test_5.mp4 | fixed/single | 22/26 | 0/0 |
+
+**Table C: still misses by miss type**
+
+| miss type | still misses | false makes |
+| --- | --- | --- |
+| back_rim | 6 | 0 |
+| front_rim | 13 | 0 |
+| other | 5 | 0 |
+| side_rim_out | 6 | 0 |
+| **all** | 30 | 0 |
+
+Still-camera misses outside fixed/single clips: 22 (false makes: 0)  
+If counted in scope: in-scope misses would be 8 + 22 = 30
+
+Sanity checks: the totals match the scoreboard (248 makes, 85 misses). 6 of the 68 shots in `fixed/single` clips are not still (`video_test_5` 4 of 30, `aggie_NathanBBall` 1 of 6, `artur_vid29` 1 of 4); no threshold was changed. Owner decides whether these still-camera misses count towards the in-scope set.
+
 ---
 
 ## 1. Measured diagnosis
