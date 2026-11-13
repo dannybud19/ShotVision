@@ -175,7 +175,7 @@ b28fce2 Add RimTracker: automatic rim tracking from hoop detections
 - **A0** (ad612d8): committed PLAN_5. Baseline matched: 172 tests, 162/248 makes, 0/85 + 1 spurious, in-scope 8 misses.
 - **A1** (30b0dba): `live_check.py` real-time verdict. Files: processing fps >= source fps. Live sources: p95 latency below the frame interval. The owner's webcam run (source 29.89 fps, p95 15.3 ms) would now read YES. 176 tests. Not run.
 - **A2** (e7b28d1): `experiments/release_moment.py`, release frame from the ball's arc (tracked ball, no model). Releases found for 312 of 333 shots (68/68 `fixed/single`); the 21 failures are all `no_apex` in moving-camera clips. Report only, nothing checked against the footage yet. The plan's synthetic test arc never rose above its rim, so the owner changed the fixture (rim `(500, 450, 60)`, arc t = 0 to 24); thresholds untouched. 180 tests.
-- **A3** (7708cd8): `review_sheets.py frames --label`, and 20 release-candidate sheets for `fixed/single` shots in `sample_clips/_review/release/` (gitignored). The tiles are crops around the hoop. 181 tests.
+- **A3** (7708cd8): `review_sheets.py frames --label`, and 20 release-candidate sheets for `fixed/single` shots in `sample_clips/_review/release/` (gitignored). The tiles were first crops around the hoop; the sheets were later rebuilt as shooter-centred crops (`--center-on-release`, commit 9865553). 181 tests.
 - **A4** (abaf13a): `experiments/court_map.py`, homography from clicked court points, `is_three` for FIBA and NBA. The click-through tool has not been run (needs the owner's screen). 186 tests.
 - **A5** (cae5305): `docs/plans/PLAN_5_decisions.md`, 20 rows for the owner's release frames.
 - **A6:** docs (this commit).
